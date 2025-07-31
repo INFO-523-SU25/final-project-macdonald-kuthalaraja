@@ -1,11 +1,11 @@
 ---
-title: "Proposal title"
+title: "Forecasting S&P 500 Returns on Multiple Horizons Using LSTM"
 subtitle: "Proposal"
 author: 
-  - name: "Team Name - Team member 1, Team member 2,..."
+  - name: "Macdonald-Kuthalaraja - Trevor Macdonald, Nandakumar Kuthalaraja "
     affiliations:
       - name: "College of Information Science, University of Arizona"
-description: "Project description"
+description: "Forecasting S&P 500 Returns on Multiple Horizons Using LSTM"
 format:
   html:
     code-tools: true
@@ -20,9 +20,20 @@ jupyter: python3
 ---
 
 ```{python}
-#| label: load-pkgs
+#| label: Set Up
 #| message: false
+
 import numpy as np
+import pandas as pd
+import yfinance as yf
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+from keras.models import Sequential
+from keras.layers import LSTM, Dense, Dropout
+from keras.callbacks import EarlyStopping
+
 ```
 
 ## Dataset
@@ -30,6 +41,14 @@ import numpy as np
 ```{python}
 #| label: load-dataset
 #| message: false
+
+print("Downloading SPX data...")
+data = yf.download('^GSPC', start='2014-01-01', end='2024-12-01')
+
+# Flatten MultiIndex columns if necessary
+if isinstance(data.columns, pd.MultiIndex):
+    data.columns = ['_'.join(col).strip() for col in data.columns.values]
+
 ```
 
 A brief description of your dataset including its provenance, dimensions, etc. as well as the reason why you chose this dataset.
@@ -40,6 +59,58 @@ Make sure to load the data and use inline code for some of this information.
 
 The two questions you want to answer.
 
+Q1. Can a Long Short-Term Memory (LSTM) model accurately forecast short, medium, or long term S&P 500 returns?
+
+Q2. How does forecast accuracy degrade as a function of prediction horizon, and what does this suggest about LSTM’s ability to model longer term financial trends?
+
 ## Analysis plan
 
--   A plan for answering each of the questions including the variables involved, variables to be created (if any), external data to be merged in (if any).
+-   The analysis will begin with acquisition of data from yahoo finance. We will have 4 tickers and merge into one data frame with preferred variables, features, etc.
+
+-   The variables will receive a basic visual inspection and dimensional analysis
+
+-   The data will be cleaned and standardized to produce a "tidy" set to be split for training LSTM model.
+
+-   The model will be tested on unseen data set and results recorded.
+
+-   The performance will evaluated for each time horizon and compared using plot visuals.
+
+ | Ticker   | Description                           |
+ |----------|---------------------------------------|
+ | `^GSPC`  | S&P 500 Index (price and volume data) |
+ | `^VIX`   | 30-day implied volatility             |
+    | `^VVIX`  | Volatility of volatility              |
+    | `^VIX9D` | 9-day implied volatility              |
+
+| Variable | Description                               |
+|----------|-------------------------------------------|
+| `Open`   | Opening price of SPX                      |
+| `High`   | Daily high price of SPX                   |
+| `Low`    | Daily low price of SPX                    |
+| `Close`  | Daily closing price of SPX                |
+| `Volume` | Daily trading volume of SPX               |
+| `VIX`    | Implied volatility index (30-day horizon) |
+| `VVIX`   | Volatility-of-volatility index            |
+| `VIX9D`  | 9-day implied volatility index            |
+
+| Features | Description |
+|--------------------|---------------------------------------------------|
+| `log_return_t` | Log returns of SPX: `log(Close_t / Close_{t-1})` |
+| `ParkinsonVol` | Realized volatility from high/low: `ln(High/Low)^2 / (4ln2)` |
+| `EMA_10`, `SMA_21` | Short-term and medium-term trend indicators |
+| `lag_volatility` | Lagged daily volatility measures (RV, VIX, VVIX) |
+
+| Target Variable | Definition                                       |
+|-----------------|--------------------------------------------------|
+| `Return_t+1`    | 1-day ahead return: `pct_change(1).shift(-1)`    |
+| `Return_t+5`    | 5-day ahead return: `pct_change(5).shift(-5)`    |
+| `Return_t+21`   | 21-day ahead return: `pct_change(21).shift(-21)` |
+
+| Step | Description |
+|------------------------------------|------------------------------------|
+| **Data Acquisition** | Download OHLCV for `^GSPC(SPX)`, and volatility indices: `^VIX`, `^VVIX`, `^VIX9D` via `yfinance` |
+| **Data Cleaning/ Inspection** | Align, index, remove nulls, filter data for consistency |
+| **Feature Engineering/Standardization** | Construct technical indicators, lag features, and volatility-based predictors |
+| **Train/Test Split** | 80/20 time based split |
+| **Model Architecture** | LSTM |
+| **Evaluation Metrics** | MAE and RMSE for each forecast horizon |
