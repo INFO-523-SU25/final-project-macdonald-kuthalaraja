@@ -4,3 +4,8 @@
 .Ruserdata
 
 /.quarto/
+.quarto_ipynb
+.quarto_cache
+.quarto_project
+/_freeze/
+/_site/
