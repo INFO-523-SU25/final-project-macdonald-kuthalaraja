@@ -4354,6 +4354,49 @@ vertical-align: -.125em;
 </tr>
 </tbody>
 </table>
+<p>Potential Variables</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 27%">
+<col style="width: 72%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>prev_day_return</td>
+<td>Return from the previous trading day</td>
+</tr>
+<tr class="even">
+<td>rolling_std_5</td>
+<td>5-day rolling standard deviation (volatility)</td>
+</tr>
+<tr class="odd">
+<td>rolling_std_21</td>
+<td>21-day (1-month) rolling standard deviation</td>
+</tr>
+<tr class="even">
+<td>ATR_14</td>
+<td>14-day Average True Range (volatility indicator)</td>
+</tr>
+<tr class="odd">
+<td>volume_zscore_5</td>
+<td>5-day Z-score of trading volume</td>
+</tr>
+<tr class="even">
+<td>RSI_14</td>
+<td>14-day Relative Strength Index</td>
+</tr>
+<tr class="odd">
+<td>VIX</td>
+<td>Implied volatility index (if available for the SPX)</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="analysis-plan-q4" class="level2">
 <h2 class="anchored" data-anchor-id="analysis-plan-q4">Analysis plan (Q4)</h2>
@@ -4391,6 +4434,61 @@ vertical-align: -.125em;
 <tr class="even">
 <td>Interpretation</td>
 <td>Visualize and interpret the dendrogram to analyze and describe stock group taxonomy.</td>
+</tr>
+</tbody>
+</table>
+<p>Potential Variables for Use</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 71%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>avg_return_2024</td>
+<td>Average daily return in 2024</td>
+</tr>
+<tr class="even">
+<td>volatility_2024</td>
+<td>Standard deviation of daily returns in 2024</td>
+</tr>
+<tr class="odd">
+<td>momentum_3m</td>
+<td>3-month price momentum (percent change)</td>
+</tr>
+<tr class="even">
+<td>value_ratio</td>
+<td>Price-to-earnings (P/E) or price-to-book (P/B) ratio</td>
+</tr>
+<tr class="odd">
+<td>size</td>
+<td>Market capitalization</td>
+</tr>
+<tr class="even">
+<td>beta_market</td>
+<td>Beta (sensitivity to S&amp;P 500 index)</td>
+</tr>
+<tr class="odd">
+<td>dividend_yield</td>
+<td>Dividend yield</td>
+</tr>
+<tr class="even">
+<td>sector</td>
+<td>Categorical variable for sector (for interpretation/grouping)</td>
+</tr>
+<tr class="odd">
+<td>skewness_2024</td>
+<td>Skewness of daily returns in 2024</td>
+</tr>
+<tr class="even">
+<td>kurtosis_2024</td>
+<td>Kurtosis of daily returns in 2024</td>
 </tr>
 </tbody>
 </table>
@@ -5046,22 +5144,48 @@ vertical-align: -.125em;
 <span id="cb4-145"><a href="#cb4-145"></a><span class="pp">|</span> Train Classifier        <span class="pp">|</span> Fit a supervised learning model to predict volatility class from the features.                 <span class="pp">|</span></span>
 <span id="cb4-146"><a href="#cb4-146"></a><span class="pp">|</span> Evaluate Model          <span class="pp">|</span> Assess model accuracy and review which features are most predictive.                           <span class="pp">|</span></span>
 <span id="cb4-147"><a href="#cb4-147"></a></span>
-<span id="cb4-148"><a href="#cb4-148"></a></span>
-<span id="cb4-149"><a href="#cb4-149"></a><span class="fu">## Analysis plan (Q4)</span></span>
-<span id="cb4-150"><a href="#cb4-150"></a></span>
-<span id="cb4-151"><a href="#cb4-151"></a>This uses Unsupervised Machine Learning Methods for exploring</span>
-<span id="cb4-152"><a href="#cb4-152"></a></span>
-<span id="cb4-153"><a href="#cb4-153"></a><span class="ss">1. </span>Collect and preprocess S&amp;P 500 stock data for 2024, calculating each stock’s exposure to multiple risk and return factors (e.g., momentum, value, size, volatility).</span>
-<span id="cb4-154"><a href="#cb4-154"></a><span class="ss">2. </span>Construct a feature matrix where each row represents a stock and columns represent factor exposures.</span>
-<span id="cb4-155"><a href="#cb4-155"></a><span class="ss">3. </span>Apply hierarchical clustering (such as Ward’s method) to the feature matrix to group stocks with similar profiles.</span>
-<span id="cb4-156"><a href="#cb4-156"></a><span class="ss">4. </span>Visualize the dendrogram and analyze the resulting clusters to interpret the taxonomy and identify meaningful stock groupings.</span>
-<span id="cb4-157"><a href="#cb4-157"></a></span>
-<span id="cb4-158"><a href="#cb4-158"></a><span class="pp">|</span> Step         <span class="pp">|</span> Description                                                                                 <span class="pp">|</span></span>
-<span id="cb4-159"><a href="#cb4-159"></a><span class="pp">|--------------|---------------------------------------------------------------------------------------------|</span></span>
-<span id="cb4-160"><a href="#cb4-160"></a><span class="pp">|</span> Data Prep    <span class="pp">|</span> Collect and preprocess S&amp;P 500 stock data for 2024, computing multi-factor exposures.       <span class="pp">|</span></span>
-<span id="cb4-161"><a href="#cb4-161"></a><span class="pp">|</span> Matrix Build <span class="pp">|</span> Create a matrix with stocks as rows and factor exposures as columns.                        <span class="pp">|</span></span>
-<span id="cb4-162"><a href="#cb4-162"></a><span class="pp">|</span> Clustering   <span class="pp">|</span> Perform hierarchical clustering (e.g., Ward’s method) on the feature matrix.                <span class="pp">|</span></span>
-<span id="cb4-163"><a href="#cb4-163"></a><span class="pp">|</span> Interpretation <span class="pp">|</span> Visualize and interpret the dendrogram to analyze and describe stock group taxonomy.       <span class="pp">|</span></span>
+<span id="cb4-148"><a href="#cb4-148"></a>Potential Variables</span>
+<span id="cb4-149"><a href="#cb4-149"></a></span>
+<span id="cb4-150"><a href="#cb4-150"></a><span class="pp">|</span> Variable             <span class="pp">|</span> Description                                              <span class="pp">|</span></span>
+<span id="cb4-151"><a href="#cb4-151"></a><span class="pp">|----------------------|---------------------------------------------------------|</span></span>
+<span id="cb4-152"><a href="#cb4-152"></a><span class="pp">|</span> prev_day_return      <span class="pp">|</span> Return from the previous trading day                    <span class="pp">|</span></span>
+<span id="cb4-153"><a href="#cb4-153"></a><span class="pp">|</span> rolling_std_5        <span class="pp">|</span> 5-day rolling standard deviation (volatility)           <span class="pp">|</span></span>
+<span id="cb4-154"><a href="#cb4-154"></a><span class="pp">|</span> rolling_std_21       <span class="pp">|</span> 21-day (1-month) rolling standard deviation             <span class="pp">|</span></span>
+<span id="cb4-155"><a href="#cb4-155"></a><span class="pp">|</span> ATR_14               <span class="pp">|</span> 14-day Average True Range (volatility indicator)        <span class="pp">|</span></span>
+<span id="cb4-156"><a href="#cb4-156"></a><span class="pp">|</span> volume_zscore_5      <span class="pp">|</span> 5-day Z-score of trading volume                         <span class="pp">|</span></span>
+<span id="cb4-157"><a href="#cb4-157"></a><span class="pp">|</span> RSI_14               <span class="pp">|</span> 14-day Relative Strength Index                          <span class="pp">|</span></span>
+<span id="cb4-158"><a href="#cb4-158"></a><span class="pp">|</span> VIX                  <span class="pp">|</span> Implied volatility index (if available for the SPX)     <span class="pp">|</span></span>
+<span id="cb4-159"><a href="#cb4-159"></a></span>
+<span id="cb4-160"><a href="#cb4-160"></a><span class="fu">## Analysis plan (Q4)</span></span>
+<span id="cb4-161"><a href="#cb4-161"></a></span>
+<span id="cb4-162"><a href="#cb4-162"></a>This uses Unsupervised Machine Learning Methods for exploring</span>
+<span id="cb4-163"><a href="#cb4-163"></a></span>
+<span id="cb4-164"><a href="#cb4-164"></a><span class="ss">1. </span>Collect and preprocess S&amp;P 500 stock data for 2024, calculating each stock’s exposure to multiple risk and return factors (e.g., momentum, value, size, volatility).</span>
+<span id="cb4-165"><a href="#cb4-165"></a><span class="ss">2. </span>Construct a feature matrix where each row represents a stock and columns represent factor exposures.</span>
+<span id="cb4-166"><a href="#cb4-166"></a><span class="ss">3. </span>Apply hierarchical clustering (such as Ward’s method) to the feature matrix to group stocks with similar profiles.</span>
+<span id="cb4-167"><a href="#cb4-167"></a><span class="ss">4. </span>Visualize the dendrogram and analyze the resulting clusters to interpret the taxonomy and identify meaningful stock groupings.</span>
+<span id="cb4-168"><a href="#cb4-168"></a></span>
+<span id="cb4-169"><a href="#cb4-169"></a><span class="pp">|</span> Step         <span class="pp">|</span> Description                                                                                 <span class="pp">|</span></span>
+<span id="cb4-170"><a href="#cb4-170"></a><span class="pp">|--------------|---------------------------------------------------------------------------------------------|</span></span>
+<span id="cb4-171"><a href="#cb4-171"></a><span class="pp">|</span> Data Prep    <span class="pp">|</span> Collect and preprocess S&amp;P 500 stock data for 2024, computing multi-factor exposures.       <span class="pp">|</span></span>
+<span id="cb4-172"><a href="#cb4-172"></a><span class="pp">|</span> Matrix Build <span class="pp">|</span> Create a matrix with stocks as rows and factor exposures as columns.                        <span class="pp">|</span></span>
+<span id="cb4-173"><a href="#cb4-173"></a><span class="pp">|</span> Clustering   <span class="pp">|</span> Perform hierarchical clustering (e.g., Ward’s method) on the feature matrix.                <span class="pp">|</span></span>
+<span id="cb4-174"><a href="#cb4-174"></a><span class="pp">|</span> Interpretation <span class="pp">|</span> Visualize and interpret the dendrogram to analyze and describe stock group taxonomy.       <span class="pp">|</span></span>
+<span id="cb4-175"><a href="#cb4-175"></a></span>
+<span id="cb4-176"><a href="#cb4-176"></a>Potential Variables for Use</span>
+<span id="cb4-177"><a href="#cb4-177"></a></span>
+<span id="cb4-178"><a href="#cb4-178"></a><span class="pp">|</span> Variable                <span class="pp">|</span> Description                                                   <span class="pp">|</span></span>
+<span id="cb4-179"><a href="#cb4-179"></a><span class="pp">|-------------------------|---------------------------------------------------------------|</span></span>
+<span id="cb4-180"><a href="#cb4-180"></a><span class="pp">|</span> avg_return_2024         <span class="pp">|</span> Average daily return in 2024                                  <span class="pp">|</span></span>
+<span id="cb4-181"><a href="#cb4-181"></a><span class="pp">|</span> volatility_2024         <span class="pp">|</span> Standard deviation of daily returns in 2024                   <span class="pp">|</span></span>
+<span id="cb4-182"><a href="#cb4-182"></a><span class="pp">|</span> momentum_3m             <span class="pp">|</span> 3-month price momentum (percent change)                       <span class="pp">|</span></span>
+<span id="cb4-183"><a href="#cb4-183"></a><span class="pp">|</span> value_ratio             <span class="pp">|</span> Price-to-earnings (P/E) or price-to-book (P/B) ratio          <span class="pp">|</span></span>
+<span id="cb4-184"><a href="#cb4-184"></a><span class="pp">|</span> size                    <span class="pp">|</span> Market capitalization                                        <span class="pp">|</span></span>
+<span id="cb4-185"><a href="#cb4-185"></a><span class="pp">|</span> beta_market             <span class="pp">|</span> Beta (sensitivity to S&amp;P 500 index)                           <span class="pp">|</span></span>
+<span id="cb4-186"><a href="#cb4-186"></a><span class="pp">|</span> dividend_yield          <span class="pp">|</span> Dividend yield                                                <span class="pp">|</span></span>
+<span id="cb4-187"><a href="#cb4-187"></a><span class="pp">|</span> sector                  <span class="pp">|</span> Categorical variable for sector (for interpretation/grouping) <span class="pp">|</span></span>
+<span id="cb4-188"><a href="#cb4-188"></a><span class="pp">|</span> skewness_2024           <span class="pp">|</span> Skewness of daily returns in 2024                             <span class="pp">|</span></span>
+<span id="cb4-189"><a href="#cb4-189"></a><span class="pp">|</span> kurtosis_2024           <span class="pp">|</span> Kurtosis of daily returns in 2024                             <span class="pp">|</span></span>
 </code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
