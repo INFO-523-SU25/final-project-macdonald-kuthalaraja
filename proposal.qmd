@@ -43,7 +43,7 @@ from keras.callbacks import EarlyStopping
 #| message: false
 
 print("Downloading SPX data...")
-data = yf.download('^GSPC', start='2014-01-01', end='2024-12-01')
+data = yf.download('^GSPC', start='2014-01-01', end='2024-12-31')
 
 # Flatten MultiIndex columns if necessary
 if isinstance(data.columns, pd.MultiIndex):
@@ -57,13 +57,17 @@ Make sure to load the data and use inline code for some of this information.
 
 ## Questions
 
-The two questions you want to answer.
+The four questions you want to answer.
 
 Q1. Can a Long Short-Term Memory (LSTM) model accurately forecast short, medium, or long term S&P 500 returns?
 
 Q2. How does forecast accuracy degrade as a function of prediction horizon, and what does this suggest about LSTM’s ability to model longer term financial trends?
 
-## Analysis plan
+Q3. How well can we classify each trading day in 2024 into low, medium, or high volatility regimes based on recent price action and market indicators?
+
+Q4. How can hierarchical clustering organize S&P 500 stocks into a taxonomy based on multi-factor risk or return exposures?
+
+## Analysis plan (Q1, Q2)
 
 -   The analysis will begin with acquisition of data from yahoo finance. We will have 4 tickers and merge into one data frame with preferred variables, features, etc.
 
@@ -75,12 +79,12 @@ Q2. How does forecast accuracy degrade as a function of prediction horizon, and 
 
 -   The performance will evaluated for each time horizon and compared using plot visuals.
 
- | Ticker   | Description                           |
- |----------|---------------------------------------|
- | `^GSPC`  | S&P 500 Index (price and volume data) |
- | `^VIX`   | 30-day implied volatility             |
-    | `^VVIX`  | Volatility of volatility              |
-    | `^VIX9D` | 9-day implied volatility              |
+| Ticker   | Description                           |
+|----------|---------------------------------------|
+| `^GSPC`  | S&P 500 Index (price and volume data) |
+| `^VIX`   | 30-day implied volatility             |
+| `^VVIX`  | Volatility of volatility              |
+| `^VIX9D` | 9-day implied volatility              |
 
 | Variable | Description                               |
 |----------|-------------------------------------------|
@@ -94,7 +98,7 @@ Q2. How does forecast accuracy degrade as a function of prediction horizon, and 
 | `VIX9D`  | 9-day implied volatility index            |
 
 | Features | Description |
-|--------------------|---------------------------------------------------|
+|----|----|
 | `log_return_t` | Log returns of SPX: `log(Close_t / Close_{t-1})` |
 | `ParkinsonVol` | Realized volatility from high/low: `ln(High/Low)^2 / (4ln2)` |
 | `EMA_10`, `SMA_21` | Short-term and medium-term trend indicators |
@@ -107,10 +111,49 @@ Q2. How does forecast accuracy degrade as a function of prediction horizon, and 
 | `Return_t+21`   | 21-day ahead return: `pct_change(21).shift(-21)` |
 
 | Step | Description |
-|------------------------------------|------------------------------------|
+|----|----|
 | **Data Acquisition** | Download OHLCV for `^GSPC(SPX)`, and volatility indices: `^VIX`, `^VVIX`, `^VIX9D` via `yfinance` |
 | **Data Cleaning/ Inspection** | Align, index, remove nulls, filter data for consistency |
 | **Feature Engineering/Standardization** | Construct technical indicators, lag features, and volatility-based predictors |
 | **Train/Test Split** | 80/20 time based split |
 | **Model Architecture** | LSTM |
 | **Evaluation Metrics** | MAE and RMSE for each forecast horizon |
+
+
+
+## Analysis plan (Q3)
+
+This uses Supervised Machine Learning Methods for exploring
+
+1.	Feature Engineering:
+Calculate recent price action and market indicators (e.g., rolling volatility, intraday range, moving averages, volume, VIX).
+2.	Target Creation:
+Label each trading day as “low”, “medium”, or “high” volatility based on daily realized volatility bins (e.g., using tertiles or quantiles).
+3.	Model Training:
+Use supervised learning models (e.g., decision tree, random forest, XGBoost) to classify the volatility regime from engineered features.
+4.	Evaluation:
+Evaluate classification results with accuracy, confusion matrix, and analyze which features most influence volatility regime assignment.
+
+| Step                    | Description                                                                                   |
+|-------------------------|-----------------------------------------------------------------------------------------------|
+| Prepare Features        | Gather recent price action (returns, volatility) and market indicators for each trading day.  |
+| Create Volatility Classes | Divide days into low, medium, and high volatility using quantiles or thresholds.              |
+| Train Classifier        | Fit a supervised learning model to predict volatility class from the features.                 |
+| Evaluate Model          | Assess model accuracy and review which features are most predictive.                           |
+
+
+## Analysis plan (Q4)
+
+This uses Unsupervised Machine Learning Methods for exploring
+
+1. Collect and preprocess S&P 500 stock data for 2024, calculating each stock’s exposure to multiple risk and return factors (e.g., momentum, value, size, volatility).
+2. Construct a feature matrix where each row represents a stock and columns represent factor exposures.
+3. Apply hierarchical clustering (such as Ward’s method) to the feature matrix to group stocks with similar profiles.
+4. Visualize the dendrogram and analyze the resulting clusters to interpret the taxonomy and identify meaningful stock groupings.
+
+| Step         | Description                                                                                 |
+|--------------|---------------------------------------------------------------------------------------------|
+| Data Prep    | Collect and preprocess S&P 500 stock data for 2024, computing multi-factor exposures.       |
+| Matrix Build | Create a matrix with stocks as rows and factor exposures as columns.                        |
+| Clustering   | Perform hierarchical clustering (e.g., Ward’s method) on the feature matrix.                |
+| Interpretation | Visualize and interpret the dendrogram to analyze and describe stock group taxonomy.       |

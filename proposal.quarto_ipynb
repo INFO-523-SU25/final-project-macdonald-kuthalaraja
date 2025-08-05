@@ -1,0 +1,160 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "---\n",
+        "title: \"Forecasting S&P 500 Returns on Multiple Horizons Using LSTM\"\n",
+        "subtitle: \"Proposal\"\n",
+        "author: \n",
+        "  - name: \"Macdonald-Kuthalaraja - Trevor Macdonald, Nandakumar Kuthalaraja \"\n",
+        "    affiliations:\n",
+        "      - name: \"College of Information Science, University of Arizona\"\n",
+        "description: \"Forecasting S&P 500 Returns on Multiple Horizons Using LSTM\"\n",
+        "format:\n",
+        "  html:\n",
+        "    code-tools: true\n",
+        "    code-overflow: wrap\n",
+        "    code-line-numbers: true\n",
+        "    embed-resources: true\n",
+        "editor: visual\n",
+        "code-annotations: hover\n",
+        "execute:\n",
+        "  warning: false\n",
+        "jupyter: python3\n",
+        "---"
+      ],
+      "id": "fc3a2c97"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "message": false
+      },
+      "source": [
+        "#| label: Set Up\n",
+        "\n",
+        "import numpy as np\n",
+        "import pandas as pd\n",
+        "import yfinance as yf\n",
+        "import matplotlib.pyplot as plt\n",
+        "import seaborn as sns\n",
+        "from sklearn.preprocessing import StandardScaler\n",
+        "from sklearn.metrics import mean_squared_error, mean_absolute_error\n",
+        "from keras.models import Sequential\n",
+        "from keras.layers import LSTM, Dense, Dropout\n",
+        "from keras.callbacks import EarlyStopping"
+      ],
+      "id": "Set-Up",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Dataset\n"
+      ],
+      "id": "ce588924"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "message": false
+      },
+      "source": [
+        "#| label: load-dataset\n",
+        "\n",
+        "print(\"Downloading SPX data...\")\n",
+        "data = yf.download('^GSPC', start='2014-01-01', end='2024-12-01')\n",
+        "\n",
+        "# Flatten MultiIndex columns if necessary\n",
+        "if isinstance(data.columns, pd.MultiIndex):\n",
+        "    data.columns = ['_'.join(col).strip() for col in data.columns.values]"
+      ],
+      "id": "load-dataset",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "A brief description of your dataset including its provenance, dimensions, etc. as well as the reason why you chose this dataset.\n",
+        "\n",
+        "Make sure to load the data and use inline code for some of this information.\n",
+        "\n",
+        "## Questions\n",
+        "\n",
+        "The two questions you want to answer.\n",
+        "\n",
+        "Q1. Can a Long Short-Term Memory (LSTM) model accurately forecast short, medium, or long term S&P 500 returns?\n",
+        "\n",
+        "Q2. How does forecast accuracy degrade as a function of prediction horizon, and what does this suggest about LSTM’s ability to model longer term financial trends?\n",
+        "\n",
+        "## Analysis plan\n",
+        "\n",
+        "-   The analysis will begin with acquisition of data from yahoo finance. We will have 4 tickers and merge into one data frame with preferred variables, features, etc.\n",
+        "\n",
+        "-   The variables will receive a basic visual inspection and dimensional analysis\n",
+        "\n",
+        "-   The data will be cleaned and standardized to produce a \"tidy\" set to be split for training LSTM model.\n",
+        "\n",
+        "-   The model will be tested on unseen data set and results recorded.\n",
+        "\n",
+        "-   The performance will evaluated for each time horizon and compared using plot visuals.\n",
+        "\n",
+        "| Ticker   | Description                           |\n",
+        "|----------|---------------------------------------|\n",
+        "| `^GSPC`  | S&P 500 Index (price and volume data) |\n",
+        "| `^VIX`   | 30-day implied volatility             |\n",
+        "| `^VVIX`  | Volatility of volatility              |\n",
+        "| `^VIX9D` | 9-day implied volatility              |\n",
+        "\n",
+        "| Variable | Description                               |\n",
+        "|----------|-------------------------------------------|\n",
+        "| `Open`   | Opening price of SPX                      |\n",
+        "| `High`   | Daily high price of SPX                   |\n",
+        "| `Low`    | Daily low price of SPX                    |\n",
+        "| `Close`  | Daily closing price of SPX                |\n",
+        "| `Volume` | Daily trading volume of SPX               |\n",
+        "| `VIX`    | Implied volatility index (30-day horizon) |\n",
+        "| `VVIX`   | Volatility-of-volatility index            |\n",
+        "| `VIX9D`  | 9-day implied volatility index            |\n",
+        "\n",
+        "| Features | Description |\n",
+        "|----|----|\n",
+        "| `log_return_t` | Log returns of SPX: `log(Close_t / Close_{t-1})` |\n",
+        "| `ParkinsonVol` | Realized volatility from high/low: `ln(High/Low)^2 / (4ln2)` |\n",
+        "| `EMA_10`, `SMA_21` | Short-term and medium-term trend indicators |\n",
+        "| `lag_volatility` | Lagged daily volatility measures (RV, VIX, VVIX) |\n",
+        "\n",
+        "| Target Variable | Definition                                       |\n",
+        "|-----------------|--------------------------------------------------|\n",
+        "| `Return_t+1`    | 1-day ahead return: `pct_change(1).shift(-1)`    |\n",
+        "| `Return_t+5`    | 5-day ahead return: `pct_change(5).shift(-5)`    |\n",
+        "| `Return_t+21`   | 21-day ahead return: `pct_change(21).shift(-21)` |\n",
+        "\n",
+        "| Step | Description |\n",
+        "|----|----|\n",
+        "| **Data Acquisition** | Download OHLCV for `^GSPC(SPX)`, and volatility indices: `^VIX`, `^VVIX`, `^VIX9D` via `yfinance` |\n",
+        "| **Data Cleaning/ Inspection** | Align, index, remove nulls, filter data for consistency |\n",
+        "| **Feature Engineering/Standardization** | Construct technical indicators, lag features, and volatility-based predictors |\n",
+        "| **Train/Test Split** | 80/20 time based split |\n",
+        "| **Model Architecture** | LSTM |\n",
+        "| **Evaluation Metrics** | MAE and RMSE for each forecast horizon |"
+      ],
+      "id": "3a6f7beb"
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "display_name": "Python 3",
+      "language": "python",
+      "name": "python3"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}
