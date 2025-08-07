@@ -38,6 +38,11 @@ jobs:
           missing = checklist::install_missing_pkgs(dir = "./", glob = "*.qmd")
         shell: Rscript {0}
 
+      - name: Install Python packages
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
       - name: Build site 🔧
         run: |
           quarto render
