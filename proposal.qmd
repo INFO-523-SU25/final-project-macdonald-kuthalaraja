@@ -1,5 +1,5 @@
 ---
-title: " Navigating the S&P 500 with Machine Learning: What Can We Discover?"
+title: "Navigating the S&P 500 with Machine Learning: What Can We Discover?"
 subtitle: "Proposal"
 author: 
   - name: "Macdonald-Kuthalaraja - Trevor Macdonald, Nandakumar Kuthalaraja "

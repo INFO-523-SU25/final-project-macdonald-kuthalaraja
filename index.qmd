@@ -1,8 +1,8 @@
 ---
-title: "Project Title"
+title: "Navigating the S&P 500 with Machine Learning: What Can We Discover?"
 subtitle: "INFO 523 - Final Project"
 author: 
-  - name: "Team name - Team member 1, Team member 2,..."
+  - name: "Macdonald-Kuthalaraja - Trevor Macdonald, Nandakumar Kuthalaraja "
     affiliations:
       - name: "College of Information Science, University of Arizona"
 description: "Project description"
