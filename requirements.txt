@@ -1,2 +1,13 @@
 jupyter
 nbformat
+yfinance
+pandas
+numpy
+scikit-learn
+tensorflow
+matplotlib
+seaborn
+statsmodels
+hmmlearn
+plotly
+quarto
