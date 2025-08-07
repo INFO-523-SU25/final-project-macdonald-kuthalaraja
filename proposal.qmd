@@ -61,16 +61,6 @@ The dataset includes the following key variables:
 
 We chose the S&P 500 dataset because it serves as a benchmark for the U.S. stock market, reflecting the performance of 500 leading publicly traded companies. This makes it ideal for exploring machine learning techniques in financial time series analysis, including trend prediction, volatility classification, and return forecasting.
 
-```{python}
-import matplotlib.pyplot as plt
-
-import matplotlib.pyplot as plt
-
-plt.plot(data.index, data['Close'])
-plt.title('S&P 500 Closing Price')
-```
-
-
 
 ## Questions
 
