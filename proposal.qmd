@@ -51,9 +51,26 @@ if isinstance(data.columns, pd.MultiIndex):
 
 ```
 
-A brief description of your dataset including its provenance, dimensions, etc. as well as the reason why you chose this dataset.
+This dataset contains daily historical price data for the S&P 500 index (^GSPC), downloaded using the yfinance Python package. It spans from January 1, 2014 to December 31, 2024s.
 
-Make sure to load the data and use inline code for some of this information.
+The dataset includes the following key variables:
+	•	Open: Opening price of the index each day
+	•	High: Highest price during the trading day
+	•	Low: Lowest price during the trading day
+	•	Close: Closing price of the day
+
+We chose the S&P 500 dataset because it serves as a benchmark for the U.S. stock market, reflecting the performance of 500 leading publicly traded companies. This makes it ideal for exploring machine learning techniques in financial time series analysis, including trend prediction, volatility classification, and return forecasting.
+
+```{python}
+import matplotlib.pyplot as plt
+
+import matplotlib.pyplot as plt
+
+plt.plot(data.index, data['Close'])
+plt.title('S&P 500 Closing Price')
+```
+
+
 
 ## Questions
 
