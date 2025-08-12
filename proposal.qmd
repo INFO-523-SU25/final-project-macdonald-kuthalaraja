@@ -61,6 +61,7 @@ The dataset includes the following key variables:
 
 We chose the S&P 500 dataset because it serves as a benchmark for the U.S. stock market, reflecting the performance of 500 leading publicly traded companies. This makes it ideal for exploring machine learning techniques in financial time series analysis, including trend prediction, volatility classification, and return forecasting.
 
+With these techniques in proposal, we aim to uncover specific insights such as improved short- and long-term return forecasts from LSTM models, clearer volatility regime patterns via classification, and meaningful stock groupings through clustering of factor exposures. By quantifying accuracy across forecast horizons, identifying key predictors of risk regimes, and mapping stocks by shared characteristics, we move beyond general findings to actionable understanding of market behavior in 2024.
 
 ## Questions
 
@@ -126,7 +127,7 @@ Q4. How can hierarchical clustering organize S&P 500 stocks into a taxonomy base
 | **Model Architecture** | LSTM |
 | **Evaluation Metrics** | MAE and RMSE for each forecast horizon |
 
-
+We selected Long Short-Term Memory (LSTM) networks because they are specifically designed to capture long-term dependencies in sequential data, making them ideal for time series forecasting like stock prices. Unlike simpler models such as linear regression or basic moving averages, LSTMs can learn patterns across varying time lags and handle noisy, non-linear trends that are common in financial markets. This allows for potentially more accurate forecasts of market movements compared to models that assume fixed, short-term dependencies.
 
 ## Analysis plan (Q3)
 
