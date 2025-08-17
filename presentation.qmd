@@ -11,7 +11,7 @@ title-slide-attributes:
 format:
   revealjs:
     theme:  ['data/customtheming.scss']
-    css: data/style.css
+    css: images/style.css
   
 editor: visual
 jupyter: python3
