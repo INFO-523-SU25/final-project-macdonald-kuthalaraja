@@ -11,3 +11,4 @@ statsmodels
 hmmlearn
 plotly
 quarto
+lxml
