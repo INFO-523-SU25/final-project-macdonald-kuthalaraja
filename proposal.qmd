@@ -51,13 +51,9 @@ if isinstance(data.columns, pd.MultiIndex):
 
 ```
 
-This dataset contains daily historical price data for the S&P 500 index (^GSPC), downloaded using the yfinance Python package. It spans from January 1, 2014 to December 31, 2024s.
+This dataset contains daily historical price data for the S&P 500 index (\^GSPC), downloaded using the yfinance Python package. It spans from January 1, 2014 to December 31, 2024s.
 
-The dataset includes the following key variables:
-	•	Open: Opening price of the index each day
-	•	High: Highest price during the trading day
-	•	Low: Lowest price during the trading day
-	•	Close: Closing price of the day
+The dataset includes the following key variables: • Open: Opening price of the index each day • High: Highest price during the trading day • Low: Lowest price during the trading day • Close: Closing price of the day
 
 We chose the S&P 500 dataset because it serves as a benchmark for the U.S. stock market, reflecting the performance of 500 leading publicly traded companies. This makes it ideal for exploring machine learning techniques in financial time series analysis, including trend prediction, volatility classification, and return forecasting.
 
@@ -106,7 +102,7 @@ Q4. How can hierarchical clustering organize S&P 500 stocks into a taxonomy base
 | `VIX9D`  | 9-day implied volatility index            |
 
 | Features | Description |
-|----|----|
+|------------------------------------|------------------------------------|
 | `log_return_t` | Log returns of SPX: `log(Close_t / Close_{t-1})` |
 | `ParkinsonVol` | Realized volatility from high/low: `ln(High/Low)^2 / (4ln2)` |
 | `EMA_10`, `SMA_21` | Short-term and medium-term trend indicators |
@@ -119,7 +115,7 @@ Q4. How can hierarchical clustering organize S&P 500 stocks into a taxonomy base
 | `Return_t+21`   | 21-day ahead return: `pct_change(21).shift(-21)` |
 
 | Step | Description |
-|----|----|
+|------------------------------------|------------------------------------|
 | **Data Acquisition** | Download OHLCV for `^GSPC(SPX)`, and volatility indices: `^VIX`, `^VVIX`, `^VIX9D` via `yfinance` |
 | **Data Cleaning/ Inspection** | Align, index, remove nulls, filter data for consistency |
 | **Feature Engineering/Standardization** | Construct technical indicators, lag features, and volatility-based predictors |
@@ -133,61 +129,57 @@ We selected Long Short-Term Memory (LSTM) networks because they are specifically
 
 This uses Supervised Machine Learning Methods for exploring
 
-1.	Feature Engineering:
-Calculate recent price action and market indicators (e.g., rolling volatility, intraday range, moving averages, volume, VIX).
-2.	Target Creation:
-Label each trading day as “low”, “medium”, or “high” volatility based on daily realized volatility bins (e.g., using tertiles or quantiles).
-3.	Model Training:
-Use supervised learning models (e.g., decision tree, random forest, XGBoost) to classify the volatility regime from engineered features.
-4.	Evaluation:
-Evaluate classification results with accuracy, confusion matrix, and analyze which features most influence volatility regime assignment.
+1.  Feature Engineering: Calculate recent price action and market indicators (e.g., rolling volatility, intraday range, moving averages, volume, VIX).
+2.  Target Creation: Label each trading day as “low”, “medium”, or “high” volatility based on daily realized volatility bins (e.g., using tertiles or quantiles).
+3.  Model Training: Use supervised learning models (e.g., decision tree, random forest, XGBoost) to classify the volatility regime from engineered features.
+4.  Evaluation: Evaluate classification results with accuracy, confusion matrix, and analyze which features most influence volatility regime assignment.
 
-| Step                    | Description                                                                                   |
-|-------------------------|-----------------------------------------------------------------------------------------------|
-| Prepare Features        | Gather recent price action (returns, volatility) and market indicators for each trading day.  |
-| Create Volatility Classes | Divide days into low, medium, and high volatility using quantiles or thresholds.              |
-| Train Classifier        | Fit a supervised learning model to predict volatility class from the features.                 |
-| Evaluate Model          | Assess model accuracy and review which features are most predictive.                           |
+| Step | Description |
+|-----------------|-------------------------------------------------------|
+| Prepare Features | Gather recent price action (returns, volatility) and market indicators for each trading day. |
+| Create Volatility Classes | Divide days into low, medium, and high volatility using quantiles or thresholds. |
+| Train Classifier | Fit a supervised learning model to predict volatility class from the features. |
+| Evaluate Model | Assess model accuracy and review which features are most predictive. |
 
 Potential Variables
 
-| Variable             | Description                                              |
-|----------------------|---------------------------------------------------------|
-| prev_day_return      | Return from the previous trading day                    |
-| rolling_std_5        | 5-day rolling standard deviation (volatility)           |
-| rolling_std_21       | 21-day (1-month) rolling standard deviation             |
-| ATR_14               | 14-day Average True Range (volatility indicator)        |
-| volume_zscore_5      | 5-day Z-score of trading volume                         |
-| RSI_14               | 14-day Relative Strength Index                          |
-| VIX                  | Implied volatility index (if available for the SPX)     |
+| Variable        | Description                                         |
+|-----------------|-----------------------------------------------------|
+| prev_day_return | Return from the previous trading day                |
+| rolling_std_5   | 5-day rolling standard deviation (volatility)       |
+| rolling_std_21  | 21-day (1-month) rolling standard deviation         |
+| ATR_14          | 14-day Average True Range (volatility indicator)    |
+| volume_zscore_5 | 5-day Z-score of trading volume                     |
+| RSI_14          | 14-day Relative Strength Index                      |
+| VIX             | Implied volatility index (if available for the SPX) |
 
 ## Analysis plan (Q4)
 
 This uses Unsupervised Machine Learning Methods for exploring
 
-1. Collect and preprocess S&P 500 stock data for 2024, calculating each stock’s exposure to multiple risk and return factors (e.g., momentum, value, size, volatility).
-2. Construct a feature matrix where each row represents a stock and columns represent factor exposures.
-3. Apply hierarchical clustering (such as Ward’s method) to the feature matrix to group stocks with similar profiles.
-4. Visualize the dendrogram and analyze the resulting clusters to interpret the taxonomy and identify meaningful stock groupings.
+1.  Collect and preprocess S&P 500 stock data for 2024, calculating each stock’s exposure to multiple risk and return factors (e.g., momentum, value, size, volatility).
+2.  Construct a feature matrix where each row represents a stock and columns represent factor exposures.
+3.  Apply hierarchical clustering (such as Ward’s method) to the feature matrix to group stocks with similar profiles.
+4.  Visualize the dendrogram and analyze the resulting clusters to interpret the taxonomy and identify meaningful stock groupings.
 
-| Step         | Description                                                                                 |
-|--------------|---------------------------------------------------------------------------------------------|
-| Data Prep    | Collect and preprocess S&P 500 stock data for 2024, computing multi-factor exposures.       |
-| Matrix Build | Create a matrix with stocks as rows and factor exposures as columns.                        |
-| Clustering   | Perform hierarchical clustering (e.g., Ward’s method) on the feature matrix.                |
-| Interpretation | Visualize and interpret the dendrogram to analyze and describe stock group taxonomy.       |
+| Step | Description |
+|---------------|---------------------------------------------------------|
+| Data Prep | Collect and preprocess S&P 500 stock data for 2024, computing multi-factor exposures. |
+| Matrix Build | Create a matrix with stocks as rows and factor exposures as columns. |
+| Clustering | Perform hierarchical clustering (e.g., Ward’s method) on the feature matrix. |
+| Interpretation | Visualize and interpret the dendrogram to analyze and describe stock group taxonomy. |
 
 Potential Variables for Use
 
-| Variable                | Description                                                   |
-|-------------------------|---------------------------------------------------------------|
-| avg_return_2024         | Average daily return in 2024                                  |
-| volatility_2024         | Standard deviation of daily returns in 2024                   |
-| momentum_3m             | 3-month price momentum (percent change)                       |
-| value_ratio             | Price-to-earnings (P/E) or price-to-book (P/B) ratio          |
-| size                    | Market capitalization                                        |
-| beta_market             | Beta (sensitivity to S&P 500 index)                           |
-| dividend_yield          | Dividend yield                                                |
-| sector                  | Categorical variable for sector (for interpretation/grouping) |
-| skewness_2024           | Skewness of daily returns in 2024                             |
-| kurtosis_2024           | Kurtosis of daily returns in 2024                             |
+| Variable | Description |
+|---------------------|---------------------------------------------------|
+| avg_return_2024 | Average daily return in 2024 |
+| volatility_2024 | Standard deviation of daily returns in 2024 |
+| momentum_3m | 3-month price momentum (percent change) |
+| value_ratio | Price-to-earnings (P/E) or price-to-book (P/B) ratio |
+| size | Market capitalization |
+| beta_market | Beta (sensitivity to S&P 500 index) |
+| dividend_yield | Dividend yield |
+| sector | Categorical variable for sector (for interpretation/grouping) |
+| skewness_2024 | Skewness of daily returns in 2024 |
+| kurtosis_2024 | Kurtosis of daily returns in 2024 |

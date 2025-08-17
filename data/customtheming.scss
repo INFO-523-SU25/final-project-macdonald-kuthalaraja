@@ -1,3 +1,11 @@
 /*-- scss:defaults --*/
 
 $body-bg: #ffffff;
+#title-slide {
+  .title       { color: rgb(22, 22, 94) !important; }
+  .subtitle,
+  .quarto-title-author,
+  .author,
+  .institute,
+  .date        { color: rgb(22, 22, 94) !important; }
+}
