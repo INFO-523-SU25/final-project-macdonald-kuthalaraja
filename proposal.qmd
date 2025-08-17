@@ -63,15 +63,74 @@ With these techniques in proposal, we aim to uncover specific insights such as i
 
 The four questions you want to answer.
 
-Q1. Can a Long Short-Term Memory (LSTM) model accurately forecast short, medium, or long term S&P 500 returns?
+Q1. How well can we classify each trading day in 2024 into low, medium, or high volatility regimes based on recent price action and market indicators?
 
-Q2. How does forecast accuracy degrade as a function of prediction horizon, and what does this suggest about LSTM’s ability to model longer term financial trends?
+Q2. How can hierarchical clustering organize S&P 500 stocks into a taxonomy based on multi-factor risk or return exposures?
 
-Q3. How well can we classify each trading day in 2024 into low, medium, or high volatility regimes based on recent price action and market indicators?
+Q3. Can a Long Short-Term Memory (LSTM) model accurately forecast short, medium, or long term S&P 500 returns?
 
-Q4. How can hierarchical clustering organize S&P 500 stocks into a taxonomy based on multi-factor risk or return exposures?
+Q4. How does forecast accuracy degrade as a function of prediction horizon, and what does this suggest about LSTM’s ability to model longer term financial trends?
 
-## Analysis plan (Q1, Q2)
+## Analysis plan (Q1)
+
+This uses Supervised Machine Learning Methods for exploring
+
+1.  Feature Engineering: Calculate recent price action and market indicators (e.g., rolling volatility, intraday range, moving averages, volume, VIX).
+2.  Target Creation: Label each trading day as “low”, “medium”, or “high” volatility based on daily realized volatility bins (e.g., using tertiles or quantiles).
+3.  Model Training: Use supervised learning models (e.g., decision tree, random forest, XGBoost) to classify the volatility regime from engineered features.
+4.  Evaluation: Evaluate classification results with accuracy, confusion matrix, and analyze which features most influence volatility regime assignment.
+
+| Step | Description |
+|------------------|-----------------------------------------------------|
+| Prepare Features | Gather recent price action (returns, volatility) and market indicators for each trading day. |
+| Create Volatility Classes | Divide days into low, medium, and high volatility using quantiles or thresholds. |
+| Train Classifier | Fit a supervised learning model to predict volatility class from the features. |
+| Evaluate Model | Assess model accuracy and review which features are most predictive. |
+
+Potential Variables
+
+| Variable        | Description                                         |
+|-----------------|-----------------------------------------------------|
+| prev_day_return | Return from the previous trading day                |
+| rolling_std_5   | 5-day rolling standard deviation (volatility)       |
+| rolling_std_21  | 21-day (1-month) rolling standard deviation         |
+| ATR_14          | 14-day Average True Range (volatility indicator)    |
+| volume_zscore_5 | 5-day Z-score of trading volume                     |
+| RSI_14          | 14-day Relative Strength Index                      |
+| VIX             | Implied volatility index (if available for the SPX) |
+
+## Analysis plan (Q2)
+
+This uses Unsupervised Machine Learning Methods for exploring
+
+1.  Collect and preprocess S&P 500 stock data for 2024, calculating each stock’s exposure to multiple risk and return factors (e.g., momentum, value, size, volatility).
+2.  Construct a feature matrix where each row represents a stock and columns represent factor exposures.
+3.  Apply hierarchical clustering (such as Ward’s method) to the feature matrix to group stocks with similar profiles.
+4.  Visualize the dendrogram and analyze the resulting clusters to interpret the taxonomy and identify meaningful stock groupings.
+
+| Step | Description |
+|------------------|------------------------------------------------------|
+| Data Prep | Collect and preprocess S&P 500 stock data for 2024, computing multi-factor exposures. |
+| Matrix Build | Create a matrix with stocks as rows and factor exposures as columns. |
+| Clustering | Perform hierarchical clustering (e.g., Ward’s method) on the feature matrix. |
+| Interpretation | Visualize and interpret the dendrogram to analyze and describe stock group taxonomy. |
+
+Potential Variables for Use
+
+| Variable | Description |
+|----------------------|--------------------------------------------------|
+| avg_return_2024 | Average daily return in 2024 |
+| volatility_2024 | Standard deviation of daily returns in 2024 |
+| momentum_3m | 3-month price momentum (percent change) |
+| value_ratio | Price-to-earnings (P/E) or price-to-book (P/B) ratio |
+| size | Market capitalization |
+| beta_market | Beta (sensitivity to S&P 500 index) |
+| dividend_yield | Dividend yield |
+| sector | Categorical variable for sector (for interpretation/grouping) |
+| skewness_2024 | Skewness of daily returns in 2024 |
+| kurtosis_2024 | Kurtosis of daily returns in 2024 |
+
+## Analysis plan (Q3, Q4)
 
 -   The analysis will begin with acquisition of data from yahoo finance. We will have 4 tickers and merge into one data frame with preferred variables, features, etc.
 
@@ -125,61 +184,4 @@ Q4. How can hierarchical clustering organize S&P 500 stocks into a taxonomy base
 
 We selected Long Short-Term Memory (LSTM) networks because they are specifically designed to capture long-term dependencies in sequential data, making them ideal for time series forecasting like stock prices. Unlike simpler models such as linear regression or basic moving averages, LSTMs can learn patterns across varying time lags and handle noisy, non-linear trends that are common in financial markets. This allows for potentially more accurate forecasts of market movements compared to models that assume fixed, short-term dependencies.
 
-## Analysis plan (Q3)
-
-This uses Supervised Machine Learning Methods for exploring
-
-1.  Feature Engineering: Calculate recent price action and market indicators (e.g., rolling volatility, intraday range, moving averages, volume, VIX).
-2.  Target Creation: Label each trading day as “low”, “medium”, or “high” volatility based on daily realized volatility bins (e.g., using tertiles or quantiles).
-3.  Model Training: Use supervised learning models (e.g., decision tree, random forest, XGBoost) to classify the volatility regime from engineered features.
-4.  Evaluation: Evaluate classification results with accuracy, confusion matrix, and analyze which features most influence volatility regime assignment.
-
-| Step | Description |
-|-----------------|-------------------------------------------------------|
-| Prepare Features | Gather recent price action (returns, volatility) and market indicators for each trading day. |
-| Create Volatility Classes | Divide days into low, medium, and high volatility using quantiles or thresholds. |
-| Train Classifier | Fit a supervised learning model to predict volatility class from the features. |
-| Evaluate Model | Assess model accuracy and review which features are most predictive. |
-
-Potential Variables
-
-| Variable        | Description                                         |
-|-----------------|-----------------------------------------------------|
-| prev_day_return | Return from the previous trading day                |
-| rolling_std_5   | 5-day rolling standard deviation (volatility)       |
-| rolling_std_21  | 21-day (1-month) rolling standard deviation         |
-| ATR_14          | 14-day Average True Range (volatility indicator)    |
-| volume_zscore_5 | 5-day Z-score of trading volume                     |
-| RSI_14          | 14-day Relative Strength Index                      |
-| VIX             | Implied volatility index (if available for the SPX) |
-
-## Analysis plan (Q4)
-
-This uses Unsupervised Machine Learning Methods for exploring
-
-1.  Collect and preprocess S&P 500 stock data for 2024, calculating each stock’s exposure to multiple risk and return factors (e.g., momentum, value, size, volatility).
-2.  Construct a feature matrix where each row represents a stock and columns represent factor exposures.
-3.  Apply hierarchical clustering (such as Ward’s method) to the feature matrix to group stocks with similar profiles.
-4.  Visualize the dendrogram and analyze the resulting clusters to interpret the taxonomy and identify meaningful stock groupings.
-
-| Step | Description |
-|---------------|---------------------------------------------------------|
-| Data Prep | Collect and preprocess S&P 500 stock data for 2024, computing multi-factor exposures. |
-| Matrix Build | Create a matrix with stocks as rows and factor exposures as columns. |
-| Clustering | Perform hierarchical clustering (e.g., Ward’s method) on the feature matrix. |
-| Interpretation | Visualize and interpret the dendrogram to analyze and describe stock group taxonomy. |
-
-Potential Variables for Use
-
-| Variable | Description |
-|---------------------|---------------------------------------------------|
-| avg_return_2024 | Average daily return in 2024 |
-| volatility_2024 | Standard deviation of daily returns in 2024 |
-| momentum_3m | 3-month price momentum (percent change) |
-| value_ratio | Price-to-earnings (P/E) or price-to-book (P/B) ratio |
-| size | Market capitalization |
-| beta_market | Beta (sensitivity to S&P 500 index) |
-| dividend_yield | Dividend yield |
-| sector | Categorical variable for sector (for interpretation/grouping) |
-| skewness_2024 | Skewness of daily returns in 2024 |
-| kurtosis_2024 | Kurtosis of daily returns in 2024 |
+##
