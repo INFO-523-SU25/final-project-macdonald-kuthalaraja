@@ -561,8 +561,8 @@ plt.show()
 ## Q2 \| Step 1 — Get Data
 ::: smallestest
 ```{python}
-#| fig-width: 22
-#| fig-height: 11
+#| fig-width: 20    
+#| fig-height: 7
 #| fig-align: center
 #| dpi: 150
 #| out-width: "100%"
