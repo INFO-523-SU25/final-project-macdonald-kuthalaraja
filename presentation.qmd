@@ -87,17 +87,16 @@ plt.show()
 
 **Why it matters:** Regime awareness supports **risk control, hedging, and position sizing**
 
-**Features (look-back window):**
-- Realized volatility (20d rolling std of returns), intraday range  
-- Momentum & trend (MA ratios, RSI)  
-- Volume dynamics (volume/MA ratios)  
-- Market sentiment (VIX)  
+**Features (look-back window):** - Realized volatility (20d rolling std of returns), intraday range\
+- Momentum & trend (MA ratios, RSI)\
+- Volume dynamics (volume/MA ratios)\
+- Market sentiment (VIX)
 
 **Labels:** **Tertiles of realized volatility** → Low / Medium / High
 
 **Models Tested:** Random Forest
 
-**Evaluation:** Macro-F1, balanced accuracy, confusion matrix 
+**Evaluation:** Macro-F1, balanced accuracy, confusion matrix
 :::
 
 ## Q1 \| Step 1 — Feature Engineering
@@ -218,7 +217,7 @@ plt.show()
 
 ```
 
-## Q1 | Step 2 — Target Creation
+## Q1 \| Step 2 — Target Creation
 
 ::: tiny
 We label each 2024 trading day as **Low / Medium / High** using tertiles of realized volatility, and visualize the assignments across the year.
@@ -293,8 +292,9 @@ Practical Use — These labels provide the supervised learning target for Step 3
 We train a **Random Forest classifier** on engineered features to predict volatility regimes.\
 Evaluation is done with a confusion matrix and Feature Importance ranking.
 :::
-:::: {.output-box}
-::::: tiny
+
+:::: output-box
+::: tiny
 ```{python}
 import numpy as np
 import pandas as pd
@@ -369,9 +369,8 @@ rf.fit(X_train, y_train)
 y_pred = rf.predict(X_test)
 print(classification_report(y_test, y_pred))
 ```
-:::::
+:::
 ::::
-
 
 ```{python}
 # Side by side: Confusion Matrix + Feature Importance
@@ -395,11 +394,10 @@ plt.show()
 
 ## Q1 \| Step 4 — Evaluation
 
-::: tiny
+:::: tiny
 We evaluate model performance with accuracy, balanced accuracy, macro-F1, a classification report, and visual diagnostics.
 
-:::: {.output-box}
-
+::: output-box
 ```{python}
 from sklearn.metrics import (
     accuracy_score, balanced_accuracy_score, f1_score,
@@ -434,8 +432,8 @@ print(classification_report(y_test, y_pred))
 
 
 ```
-::::
 :::
+::::
 
 ```{python}
 # --- Build timeline (aligned to test window) ---
@@ -507,21 +505,13 @@ plt.show()
 ## Q1 \| Step 5 — Insights & Takeaways
 
 ::: tiny
-**Feature signals**
-- 20-day realized volatility and **VIX** are the strongest drivers.
-- **RSI** and **volume ratios** add incremental, smaller lift.
+**Feature signals** - 20-day realized volatility and **VIX** are the strongest drivers. - **RSI** and **volume ratios** add incremental, smaller lift.
 
-**Model performance**
-- Random Forest reached **balanced accuracy / macro-F1 ≈ 0.6–0.7** (holdout).
-- Most errors are in the **Medium** class (overlaps Low/High).
+**Model performance** - Random Forest reached **balanced accuracy / macro-F1 ≈ 0.6–0.7** (holdout). - Most errors are in the **Medium** class (overlaps Low/High).
 
-**Market interpretation**
-- **Low** and **High** regimes are easier to separate (calm vs. turbulence).
-- **Medium** reflects transition phases where signals are noisy.
+**Market interpretation** - **Low** and **High** regimes are easier to separate (calm vs. turbulence). - **Medium** reflects transition phases where signals are noisy.
 
-**Practical lesson**
-- Regime classification is useful for **risk flagging** (position sizing, hedging).
-- The “middle ground” remains hardest to predict—consistent with trading intuition.
+**Practical lesson** - Regime classification is useful for **risk flagging** (position sizing, hedging). - The “middle ground” remains hardest to predict—consistent with trading intuition.
 :::
 
 ```{python}
@@ -545,32 +535,31 @@ plt.tight_layout()
 plt.show()
 ```
 
-## Q2 | Hierarchical Clustering
+## Q2 \| Hierarchical Clustering
 
 ::: smallestest
 **Goal:** Organize S&P 500 stocks into a taxonomy based on persistent risk/return exposures.
 
-**Feature design:**  
-- Momentum (12-month return)  
-- Volatility (20-day realized volatility)  
+**Feature design:**\
+- Momentum (12-month return)\
+- Volatility (20-day realized volatility)\
 - Size (log market capitalization)
 
-**Method:**  
-- Construct factor-exposure matrix for each stock **(2014–2024 averages)**
-- Apply **hierarchical clustering (Ward’s method)**  
+**Method:**\
+- Construct factor-exposure matrix for each stock **(2014–2024 averages)** - Apply **hierarchical clustering (Ward’s method)**\
 - Visualize dendrogram and clusters
 
-**Validation:**  
-- Stability of clusters across bootstrap samples  
+**Validation:**\
+- Stability of clusters across bootstrap samples\
 - Interpretability of economic themes in groups (e.g., growth vs value, high vs low vol)
 
-**Use:**  
-- Identify **natural peer groups** of stocks  
+**Use:**\
+- Identify **natural peer groups** of stocks\
 - Aid **portfolio construction, risk diversification, sector rotation strategies**
 :::
 
-## Q2 | Step 1 — Get Data
-
+## Q2 \| Step 1 — Get Data
+::: smallestest
 ```{python}
 
 import yfinance as yf
@@ -628,8 +617,7 @@ plt.legend(
 plt.tight_layout()
 plt.show()
 ```
-
-
+::: 
 ## Q3 — LSTM for Return Forecasting
 
 ::: smaller
