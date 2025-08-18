@@ -561,7 +561,11 @@ plt.show()
 ## Q2 \| Step 1 — Get Data
 ::: smallestest
 ```{python}
-
+#| fig-width: 22
+#| fig-height: 11
+#| fig-align: center
+#| dpi: 150
+#| out-width: "100%"
 import yfinance as yf
 import pandas as pd
 import matplotlib.pyplot as plt
