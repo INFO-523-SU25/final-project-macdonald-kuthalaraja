@@ -561,11 +561,12 @@ plt.show()
 ## Q2 \| Step 1 — Get Data
 ::: smallestest
 ```{python}
-#| fig-width: 20    
-#| fig-height: 7
+#| fig-width: 22
+#| fig-height: 11
 #| fig-align: center
 #| dpi: 150
 #| out-width: "100%"
+
 import yfinance as yf
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -573,52 +574,76 @@ import matplotlib.pyplot as plt
 # Get S&P500 tickers from Wikipedia
 table = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")
 sp500 = table[0]
-tickers = sp500['Symbol'].unique().tolist()
 
-# Fix tickers for Yahoo Finance format 
-swap_map = {
-    "BRK.B": "BRK-B",   # Berkshire Hathaway
-    "BF.B": "BF-B"      # Brown-Forman
-}
-tickers_yahoo = [swap_map.get(t, t) for t in tickers]
+# Fix tickers for Yahoo Finance format
+swap_map = {"BRK.B": "BRK-B", "BF.B": "BF-B"}
+tickers = [swap_map.get(t, t) for t in sp500['Symbol'].unique().tolist()]
 
-# Download OHLCV data (2014–2024)
+# Download OHLCV data (2014–2024) — not used in treemap but for consistency
 data = yf.download(
-    tickers_yahoo,
-    start="2014-01-01", end="2024-12-31",
-    group_by="ticker",
-    auto_adjust=True,
-    threads=True
+    tickers, start="2014-01-01", end="2024-12-31",
+    group_by="ticker", auto_adjust=True, threads=True
 )
 
-# Count companies by Sector + Sub-Industry
-sector_industry_counts = (
-    sp500.groupby(["GICS Sector", "GICS Sub-Industry"])["Symbol"]
-    .count()
-    .unstack(fill_value=0)
+# Sector + Sub-Industry counts
+sector_col = "GICS Sector"
+sub_col    = "GICS Sub-Industry"
+
+sec_counts = sp500[sector_col].value_counts().reset_index()
+sec_counts.columns = ["Sector","Count"]
+
+sub_counts = (
+    sp500.groupby([sector_col, sub_col])["Symbol"]
+         .count().reset_index()
+         .rename(columns={sector_col:"Sector", sub_col:"SubIndustry", "Symbol":"Count"})
 )
 
-# Plot stacked bar (1.5x bigger)
-ax = sector_industry_counts.plot(
-    kind="barh", stacked=True, figsize=(21, 12), width=0.8
+# Treemap
+try:
+    import squarify
+except ImportError:
+    import sys, subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "squarify", "-q"])
+    import squarify
+
+import matplotlib.cm as cm
+from matplotlib.patches import Patch
+
+sectors = sec_counts["Sector"].tolist()
+cmap = cm.get_cmap("tab20", len(sectors))
+sector_to_color = {s: cmap(i) for i, s in enumerate(sectors)}
+
+fig, (axL, axR) = plt.subplots(1, 2, figsize=(22,11), dpi=150)
+
+# (A) Sector-level
+squarify.plot(
+    sizes=sec_counts["Count"].values,
+    label=[f"{s}\n({c})" for s,c in zip(sec_counts["Sector"], sec_counts["Count"])],
+    color=[sector_to_color[s] for s in sec_counts["Sector"]],
+    alpha=0.95, text_kwargs={"fontsize":11}, ax=axL, pad=True
 )
+axL.axis("off")
+axL.set_title("Sectors (size = # companies)", fontsize=14, pad=8)
 
-plt.title("S&P 500 Breakdown — Sector & Sub-Industry", fontsize=18)
-plt.xlabel("Number of Companies", fontsize=14)
-plt.ylabel("Sector", fontsize=14)
-
-# Move legend to bottom, spanning multiple columns
-handles, labels = ax.get_legend_handles_labels()
-plt.legend(
-    handles, labels,
-    title="Sub-Industry",
-    bbox_to_anchor=(0.5, -0.25),
-    loc="upper center",
-    fontsize=9,
-    ncol=6
+# (B) Sub-industry (color by parent sector)
+df_t = sub_counts[sub_counts["Count"] > 0].copy()
+df_t["Label"] = df_t["SubIndustry"] + "\n(" + df_t["Count"].astype(str) + ")"
+squarify.plot(
+    sizes=df_t["Count"].values,
+    label=df_t["Label"].values,
+    color=[sector_to_color[s] for s in df_t["Sector"]],
+    alpha=0.95, text_kwargs={"fontsize":7}, ax=axR, pad=True
 )
+axR.axis("off")
+axR.set_title("Sub-Industries (color = parent sector)", fontsize=14, pad=8)
 
-plt.tight_layout()
+# Shared legend
+handles = [Patch(facecolor=sector_to_color[s], label=s) for s in sectors]
+fig.legend(handles=handles, loc="lower center", bbox_to_anchor=(0.5, 0.03),
+           ncol=min(6, len(sectors)), frameon=False, fontsize=10,
+           title="Sector", title_fontsize=11)
+
+plt.tight_layout(rect=[0,0.06,1,1])
 plt.show()
 ```
 ::: 
