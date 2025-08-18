@@ -75,7 +75,7 @@ plt.show()
 
 ::: smaller
 -   **Q1:** Classify each 2024 trading day into **low / medium / high volatility** from recent price action & indicators.
--   **Q2:** Use **hierarchical clustering** to build a taxonomy of S&P 500 stocks from **multi-factor risk/return** features.
+-   **Q2:** Use **hierarchical clustering** to build a taxonomy of S&P 500 stocks from **multi-factor risk/return** features for 2014-2024.
 -   **Q3:** Train an **LSTM** to forecast **short / medium / long**-horizon S&P 500 returns.
 -   **Q4:** Examine how **forecast accuracy degrades** with horizon—and what that implies about modeling **longer-term trends**.
 :::
@@ -545,20 +545,90 @@ plt.tight_layout()
 plt.show()
 ```
 
-## Q2 — Hierarchical Clustering of Stocks
+## Q2 | Hierarchical Clustering
 
-::: smaller
-**Goal:** Organize S&P 500 into a **data-driven taxonomy**.
+::: smallestest
+**Goal:** Organize S&P 500 stocks into a taxonomy based on persistent risk/return exposures.
 
-**Feature design options:** - **Risk/return** factors (e.g., momentum, value, size, quality, low-vol) - **Return correlations** over rolling windows - **Volatility / beta / drawdown** statistics
+**Feature design:**  
+- Momentum (12-month return)  
+- Volatility (20-day realized volatility)  
+- Size (log market capitalization)
 
-**Method:** Choose a distance (e.g., **1–ρ**, Euclidean on factor z-scores), linkage (**Ward**, **average**).\
-Produce **dendrogram** + cluster cuts (k ≈ 6–12).
+**Method:**  
+- Construct factor-exposure matrix for each stock **(2014–2024 averages)**
+- Apply **hierarchical clustering (Ward’s method)**  
+- Visualize dendrogram and clusters
 
-**Validation:** **Silhouette**, **cophenetic correlation**, cluster **stability** across windows.
+**Validation:**  
+- Stability of clusters across bootstrap samples  
+- Interpretability of economic themes in groups (e.g., growth vs value, high vs low vol)
 
-**Use:** Diversification views, **peer groups**, sector vs. data-driven comparisons.
+**Use:**  
+- Identify **natural peer groups** of stocks  
+- Aid **portfolio construction, risk diversification, sector rotation strategies**
 :::
+
+## Q2 | Step 1 — Get Data
+
+```{python}
+
+import yfinance as yf
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Get S&P500 tickers from Wikipedia
+table = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")
+sp500 = table[0]
+tickers = sp500['Symbol'].unique().tolist()
+
+# Fix tickers for Yahoo Finance format 
+swap_map = {
+    "BRK.B": "BRK-B",   # Berkshire Hathaway
+    "BF.B": "BF-B"      # Brown-Forman
+}
+tickers_yahoo = [swap_map.get(t, t) for t in tickers]
+
+# Download OHLCV data (2014–2024)
+data = yf.download(
+    tickers_yahoo,
+    start="2014-01-01", end="2024-12-31",
+    group_by="ticker",
+    auto_adjust=True,
+    threads=True
+)
+
+# Count companies by Sector + Sub-Industry
+sector_industry_counts = (
+    sp500.groupby(["GICS Sector", "GICS Sub-Industry"])["Symbol"]
+    .count()
+    .unstack(fill_value=0)
+)
+
+# Plot stacked bar (1.5x bigger)
+ax = sector_industry_counts.plot(
+    kind="barh", stacked=True, figsize=(21, 12), width=0.8
+)
+
+plt.title("S&P 500 Breakdown — Sector & Sub-Industry", fontsize=18)
+plt.xlabel("Number of Companies", fontsize=14)
+plt.ylabel("Sector", fontsize=14)
+
+# Move legend to bottom, spanning multiple columns
+handles, labels = ax.get_legend_handles_labels()
+plt.legend(
+    handles, labels,
+    title="Sub-Industry",
+    bbox_to_anchor=(0.5, -0.25),
+    loc="upper center",
+    fontsize=9,
+    ncol=6
+)
+
+plt.tight_layout()
+plt.show()
+```
+
 
 ## Q3 — LSTM for Return Forecasting
 

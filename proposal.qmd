@@ -65,7 +65,7 @@ The four questions you want to answer.
 
 Q1. How well can we classify each trading day in 2024 into low, medium, or high volatility regimes based on recent price action and market indicators?
 
-Q2. How can hierarchical clustering organize S&P 500 stocks into a taxonomy based on multi-factor risk or return exposures?
+Q2. How can hierarchical clustering organize S&P 500 stocks into a taxonomy based on multi-factor risk or return exposures between 2014-2024?
 
 Q3. Can a Long Short-Term Memory (LSTM) model accurately forecast short, medium, or long term S&P 500 returns?
 
@@ -103,7 +103,7 @@ Potential Variables
 
 This uses Unsupervised Machine Learning Methods for exploring
 
-1.  Collect and preprocess S&P 500 stock data for 2024, calculating each stock’s exposure to multiple risk and return factors (e.g., momentum, value, size, volatility).
+1.  Collect and preprocess S&P 500 stock data for time-period between 2014-2024, calculating each stock’s exposure to multiple risk and return factors (e.g., momentum, value, size, volatility).
 2.  Construct a feature matrix where each row represents a stock and columns represent factor exposures.
 3.  Apply hierarchical clustering (such as Ward’s method) to the feature matrix to group stocks with similar profiles.
 4.  Visualize the dendrogram and analyze the resulting clusters to interpret the taxonomy and identify meaningful stock groupings.
