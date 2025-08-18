@@ -2,10 +2,13 @@
 
 $body-bg: #ffffff;
 #title-slide {
-  .title       { color: rgb(22, 22, 94) !important; }
+  .title       { color: rgb(9, 9, 135) !important;
+  font-family: "Courier New", serif !important;
+  font-size: 1.9em !important;
+  }
   .subtitle,
   .quarto-title-author,
   .author,
   .institute,
-  .date        { color: rgb(22, 22, 94) !important; }
+  .date        { color: rgb(9, 9, 135) !important; }
 }
