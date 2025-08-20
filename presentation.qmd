@@ -76,8 +76,8 @@ plt.show()
 ::: smaller
 -   **Q1:** Classify each 2024 trading day into **low / medium / high volatility** from recent price action & indicators.
 -   **Q2:** Use **hierarchical clustering** to build a taxonomy of S&P 500 stocks from **multi-factor risk/return** features for 2014-2024.
--   **Q3:** Train an **LSTM** to forecast **short / medium / long**-horizon S&P 500 returns.
--   **Q4:** Examine how **forecast accuracy degrades** with horizon—and what that implies about modeling **longer-term trends**.
+-   **Q3:** Can a Long Short-Term Memory **LSTM** model accurately forecast short, medium, or long term S&P 500 returns?
+-   **Q4:** How does forecast accuracy degrade as a function of prediction horizon, and what does this suggest about LSTM’s ability to model longer term financial trends?
 :::
 
 ## Q1 — Volatility Regime Classification
@@ -559,6 +559,7 @@ plt.show()
 :::
 
 ## Q2 \| Step 1 — Get Data
+
 ::: smallestest
 ```{python}
 
@@ -641,9 +642,10 @@ fig.legend(handles=handles, loc="lower center", bbox_to_anchor=(0.5, 0.03),
 plt.tight_layout(rect=[0,0.06,1,1])
 plt.show()
 ```
-::: 
+:::
 
-## Q2 \| Step 2 — Factor Features 
+## Q2 \| Step 2 — Factor Features
+
 ```{python}
 #| label: q2-step2-features
 #| fig-width: 16
@@ -705,16 +707,19 @@ for ax in axes:
 plt.tight_layout(); plt.show()
 
 ```
+
 ::: tiny
 #### Insight
-We transform raw OHLCV data into **persistent factor exposures** for each stock:
-- **Momentum:** 12-month return signal  
-- **Volatility:** 20-day realized volatility (annualized)  
-- **Size:** log of median dollar volume as a liquidity/scale proxy  
+
+We transform raw OHLCV data into **persistent factor exposures** for each stock: - **Momentum:** 12-month return signal\
+- **Volatility:** 20-day realized volatility (annualized)\
+- **Size:** log of median dollar volume as a liquidity/scale proxy
 
 This step condenses 10 years of daily data into **stable, comparable features** that form the input for clustering.
 :::
+
 ## Q2 \| Step 3 — Factor Matrix & Standardize
+
 ```{python}
 
 from sklearn.preprocessing import StandardScaler
@@ -737,12 +742,14 @@ ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
 plt.tight_layout(); plt.show()
 
 ```
+
 ::: tiny
-We convert raw features into a **standardized factor matrix**, ensuring each exposure (momentum, volatility, size) is on the same scale.  
+We convert raw features into a **standardized factor matrix**, ensuring each exposure (momentum, volatility, size) is on the same scale.\
 A quick **PCA projection** reveals broad structure in the data — clusters and gradients emerge, hinting at natural groupings before formal clustering.
 :::
 
 ## Q2 \| Step 4 — Hierarchical Clustering
+
 ```{python}
 
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
@@ -763,13 +770,15 @@ feat['Cluster'] = labels
 
 
 ```
-::: tiny 
-We apply **hierarchical clustering (Ward’s method)** on the standardized factor matrix.  
-The dendrogram illustrates how stocks progressively merge into larger groups.  
-By selecting **k = 6 clusters**, we capture a balance between **parsimony** (few broad groups) and **interpretability** (distinct economic themes).  
+
+::: tiny
+We apply **hierarchical clustering (Ward’s method)** on the standardized factor matrix.\
+The dendrogram illustrates how stocks progressively merge into larger groups.\
+By selecting **k = 6 clusters**, we capture a balance between **parsimony** (few broad groups) and **interpretability** (distinct economic themes).
 :::
 
-## Q2 | Step 5 — Cluster Profiles & Sector Mix
+## Q2 \| Step 5 — Cluster Profiles & Sector Mix
+
 ```{python}
 #| label: q2-step5-combined
 #| fig-width: 14
@@ -833,14 +842,15 @@ plt.show()
 
 ```
 
-::: tiny 
-This step connects **quantitative cluster features** with their **economic context**:  
-- **Left (heatmap):** Each cluster shows distinct profiles in **momentum**, **volatility**, and **size**.  
-- **Right (sector mix):** Clusters reveal **different sector compositions**, helping interpret groups as, e.g., “large low-vol staples” vs. “small high-momentum tech.”  
-Together, these views highlight that clusters are not arbitrary — they align with **intuitive economic themes** and sector structures.  
+::: tiny
+This step connects **quantitative cluster features** with their **economic context**:\
+- **Left (heatmap):** Each cluster shows distinct profiles in **momentum**, **volatility**, and **size**.\
+- **Right (sector mix):** Clusters reveal **different sector compositions**, helping interpret groups as, e.g., “large low-vol staples” vs. “small high-momentum tech.”\
+Together, these views highlight that clusters are not arbitrary — they align with **intuitive economic themes** and sector structures.
 :::
 
-## Q2 | Step 6 — Validation (Silhouette & Bootstrap Stability)
+## Q2 \| Step 6 — Validation (Silhouette & Bootstrap Stability)
+
 ```{python}
 
 from sklearn.metrics import silhouette_score
@@ -872,9 +882,9 @@ print(f"Bootstrap stability (ARI): {ari:.3f}")
 
 ```
 
-::: callout-note
-:::: tiny
-*** Assessment ***
+:::: callout-note
+::: tiny
+\*\*\* Assessment \*\*\*
 
 Separation: The silhouette score indicates moderate cluster separation—typical for financial cross-sections where factor exposures overlap.
 
@@ -883,15 +893,434 @@ Stability: The bootstrap ARI suggests the taxonomy is reasonably robust under re
 Interpretation: Clusters align with economic styles (e.g., high-momentum growth, low-volatility defensives, small/illiquid cyclicals) and often cut across GICS sectors, revealing peer groups that sector labels miss.
 
 Actionability: Use clusters for diversification across distinct risk buckets, peer analysis, and rotation tilts. Re-validate periodically—style regimes and market microstructure can shift cluster boundaries.
-::::
 :::
+::::
+
+## Part 2
+
+-   **Q3:** Can a Long Short-Term Memory **LSTM** model accurately forecast short, medium, or long term S&P 500 returns?
+-   **Q4:** How does forecast accuracy degrade as a function of prediction horizon, and what does this suggest about LSTM’s ability to model longer term financial trends?
 
 ## Q3 — LSTM for Return Forecasting
 
-::: smaller
-**Target horizons:** **Short (1–5d)**, **Medium (10–20d)**, **Long (60–120d)** returns (log or pct).
+## Q3 \| Step 1 — Data Acquisition Download OHLCV for `^GSPC(SPX)`, and volatility indices: `^VIX`, `^VVIX`, `^VIX9D` via `yfinance`
 
-**Inputs:** OHLCV, technicals (momentum/vol/overbought), rolling stats, optional macro proxies.
+```{python}
+"""
+Notes:
+    - Pull -> clean -> merge -> save df to repo for SPX/VIX 
+    - auto_adjust=True returns adjusted OHLC and omits 'Adj Close'
+    DataFrames for ^GSPC, ^VIX, ^VVIX, ^VIX9D with columns:
+        date, OHLC and volume for SPX only (proxy)
+    - Merge DataFrames (inner join on dates)
+    - Saved as CSV in repo -> ./data/combined.csv
+"""
+
+from __future__ import annotations
+import pandas as pd
+import numpy as np
+import yfinance as yf
+from datetime import date
+from pathlib import Path
+from functools import reduce
+import matplotlib.pyplot as plt
+import seaborn as sns
+from typing import Dict
+from cycler import cycler
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import Ridge
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import TimeSeriesSplit
+from scipy.stats import spearmanr, binomtest
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers, callbacks, optimizers, Sequential
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.optimizers import Adam
+
+# Global plot settings
+sns.set_theme(style="whitegrid", context="notebook", palette="deep")
+plt.rcParams.update({
+    "figure.dpi": 150, "savefig.dpi": 150,
+    "axes.spines.top": False, "axes.spines.right": False,
+    "axes.titlesize": 12, "axes.labelsize": 10,
+    "legend.fontsize": 9, "xtick.labelsize": 9, "ytick.labelsize": 9,
+})
+
+'''
+# Global seaborn settings
+sns.set_theme(style="whitegrid", context="notebook", palette="colorblind")
+plt.rcParams['figure.figsize'] = (10, 6)
+
+SEAFOAM = "#55AA99"  # same base color as "light:#5A9"
+plt.rcParams["axes.prop_cycle"] = cycler(color=[SEAFOAM])  # lines/markers default
+'''
+
+# Alias is for prefered column names.
+# Start Date is for the earliest date to pull data from.
+def pull_data(ticker: str, alias: str, keep_volume: bool = False) -> pd.DataFrame:
+    df = yf.download(
+        ticker,
+        start="2014-01-01",
+        end="2024-12-31",
+        progress=False,  # suppress progress bar
+        auto_adjust=True # no 'Adj Close'
+    )
+
+    # Check if download failed
+    if df is None or df.empty:
+        raise ValueError(f"Failed to download data for ticker {ticker}")
+
+    # Flatten Index
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+        df.columns.name = None   # <-- add this
+
+    cols = ["Open", "High", "Low", "Close"] + (["Volume"] if keep_volume else [])
+    df = df[cols].copy()
+
+    # 3) Rename to lowercase + alias
+    df.rename(columns={c: f"{c.lower()}_{alias}" for c in cols}, inplace=True)
+
+    # 4) Make date a proper column
+    df = df.reset_index().rename(columns={"Date": "date"})
+    df["date"] = pd.to_datetime(df["date"])
+    return df
+
+# -----------------------------------------------------------------------------
+# Pull Data
+# -----------------------------------------------------------------------------
+
+spx   = pull_data("^GSPC",  "spx", keep_volume=True)
+vix   = pull_data("^VIX",   "vix",  keep_volume=False)
+vvix  = pull_data("^VVIX",  "vvix", keep_volume=False)
+vix9d = pull_data("^VIX9D", "vix9d", keep_volume=False)
+
+for df in [spx, vix, vvix, vix9d]:
+    print(df.shape)
+
+# Column check
+frames = [("spx", spx), ("vix", vix), ("vvix", vvix), ("vix9d", vix9d)]
+for name, df in frames:
+    print(f"\n{name} columns:")
+    for c in df.columns:
+        print(" ", c)
+
+# -----------------------------------------------------------------------------
+# Merge, save, and view
+# -----------------------------------------------------------------------------
+
+merged_df = reduce(lambda L, R: pd.merge(L, R, on="date", how="inner"), [spx, vix, vvix, vix9d])
+merged_df = merged_df.sort_values("date").reset_index(drop=True)
+
+Path("data").mkdir(parents=True, exist_ok=True)
+merged_df.to_csv("data/merged_df.csv", index=False)
+
+print("\nShape:", merged_df.shape)
+print(merged_df.head())
+
+df = merged_df.copy()
+print(merged_df.info())
+
+# Count missing values
+print(merged_df.isnull().sum())
+print("Total missing:", df.isnull().sum().sum())
+
+# Show rows with any missing values
+print(df[df.isnull().any(axis=1)].head())
+
+# Check if sorted
+is_chronological = df['date'].is_monotonic_increasing
+print("DataFrame is in chronological order:", is_chronological)
+
+```
+
+
+
+
+## Q3 \| Step 2 — Feature Engineering/Standardization
+
+
+## Q3 \| Step 3 — Train/Test Split 80/20 time based split
+
+
+## Q3 \| Step 4 — Model Architecture LSTM
+```{python}
+#Rebuilding LSTM MODEL
+PRICE_COL   = "close_spx"
+
+FEATURE_SET = ""
+LOOKBACK    = 60
+HORIZONS    = [1, 5, 10]
+TRAIN_FRAC  = 0.8
+
+# tiny, stackable LSTM
+NUM_LAYERS  = 2
+UNITS       = 32
+DROPOUT     = 0.20
+LR          = 1e-3
+EPOCHS      = 25
+BATCH       = 64
+
+
+# Build features
+
+def add_features(
+        
+    df: pd.DataFrame,
+    date_col: str | None = "date",
+    close_col: str = "close_spx",
+    vix_col: str = "close_vix",
+    vix9d_col: str = "close_vix9d",
+    vvix_col: str = "close_vvix",
+    ema_span: int = 20,
+    rv_window: int = 20,
+    vol_variant: str = "rv20"  # "rv20" (default) or "vvix"
+) -> Tuple[pd.DataFrame, List[str]]:
+    """
+    Build 5 high-signal, leak-safe LSTM features:
+
+      1) r1                      : simple daily return
+      2) ema_dist_20_pct         : (close / EMA20) - 1
+      3) ema_slope_20_pct        : EMA20.pct_change()
+      4) rv20 or vvix_over_vix   : realized vol or vol-of-vol spread
+      5) vix9d_over_vix_minus1   : term-structure (short vs 30d IV)
+
+    Notes:
+    - Uses only info available up to t. No target/shift here (do that in pipeline).
+    - Drops warmup NaNs from pct_change/EMA/rolling.
+    """
+import numpy as np
+import pandas as pd
+from typing import Tuple, List
+
+def make_features(
+    df: pd.DataFrame,
+    date_col: str | None = "date",
+    close_col: str = "close_spx",
+    vix_col: str = "close_vix",
+    vix9d_col: str = "close_vix9d",
+    vvix_col: str = "close_vvix",
+    ema_span: int = 20,
+    rv_window: int = 20,
+    use_vvix_spread: bool = False,     # False => use rv20; True => use (VVIX/VIX - 1)
+    add_multi_returns: bool = True,    # adds r1, r5, r21
+    horizons: List[int] = [1, 5, 21],
+    add_booleans: bool = False         # adds aboveEMA20, ts_inverted
+) -> Tuple[pd.DataFrame, List[str]]:
+    """
+    Builds a compact, stationary feature set for directional LSTM on SPX.
+
+    Continuous features:
+      - r1 (always); r5, r21 if add_multi_returns=True
+      - ema_dist_20_pct
+      - ema_slope_20_pct
+      - vix9d_over_vix_minus1
+      - rv20  (if use_vvix_spread=False)  OR  vvix_over_vix_minus1 (if True)
+
+    Optional booleans (if add_booleans=True, shifted by 1 to avoid same-bar leakage):
+      - aboveEMA20          : close > EMA20  (shifted)
+      - ts_inverted         : VIX9D > VIX    (shifted)
+
+    Returns
+    -------
+    features_df : DataFrame indexed by date (if date_col provided)
+    feat_cols   : List[str] of feature column names (continuous + optional booleans)
+    """
+    out = df.copy()
+
+    # Sort by date if present
+    if date_col and date_col in out.columns:
+        out[date_col] = pd.to_datetime(out[date_col], errors="coerce")
+        out = out.dropna(subset=[date_col]).sort_values(date_col).set_index(date_col)
+    else:
+        out = out.sort_index()
+
+    # Guards + numeric coercion
+    req = [close_col, vix_col, vix9d_col]
+    if use_vvix_spread:
+        req.append(vvix_col)
+    for c in req:
+        if c not in out.columns:
+            raise KeyError(f"Missing required column: {c}")
+        out[c] = pd.to_numeric(out[c], errors="coerce")
+
+    # Core returns (simple)
+    out["r1"] = out[close_col].pct_change(1)
+    if add_multi_returns:
+        for h in horizons:
+            out[f"r{h}"] = out[close_col].pct_change(h)
+
+    # EMA(20) + transforms
+    ema20 = out[close_col].ewm(span=ema_span, adjust=False, min_periods=ema_span).mean()
+    out["ema_dist_20_pct"]  = out[close_col] / ema20 - 1
+    out["ema_slope_20_pct"] = ema20.pct_change()
+
+    # Vol feature: realized or implied spread
+    if use_vvix_spread:
+        out["vvix_over_vix_minus1"] = out[vvix_col] / out[vix_col] - 1
+        vol_col = "vvix_over_vix_minus1"
+    else:
+        # realized volatility over rv_window (stationary vol regime)
+        minp = max(5, rv_window // 2)
+        out["rv20"] = out["r1"].rolling(rv_window, min_periods=minp).std()
+        vol_col = "rv20"
+
+    # IV term structure (short vs 30d)
+    out["vix9d_over_vix_minus1"] = out[vix9d_col] / out[vix_col] - 1
+
+    # Optional booleans (shifted by 1 bar = no same-bar look-ahead)
+    bool_cols = []
+    if add_booleans:
+        out["aboveEMA20"]  = (out[close_col] > ema20).shift(1).astype("Int8")
+        out["ts_inverted"] = (out[vix9d_col] > out[vix_col]).shift(1).astype("Int8")
+        bool_cols = ["aboveEMA20", "ts_inverted"]
+
+    # Collect feature columns
+    base_cols = ["r1", "ema_dist_20_pct", "ema_slope_20_pct", "vix9d_over_vix_minus1", vol_col]
+    if add_multi_returns:
+        extra = [f"r{h}" for h in horizons if h != 1]  # r1 already included
+        base_cols += extra
+    feat_cols = base_cols + bool_cols
+
+    # Drop warmup NaNs from EMA/rolling/pct_change/shift
+    features_df = out.dropna(subset=feat_cols).copy()
+
+    return features_df, feat_cols
+
+
+def make_windows_arrays(X_scaled, y, lookback: int, horizon: int):
+    """(T,F) -> (N,lookback,F) windows with targets at t+h-1."""
+    Xw, yw = [], []
+    T = len(X_scaled)
+    for t in range(lookback, T - horizon + 1):
+        Xw.append(X_scaled[t - lookback:t, :])
+        yw.append(y[t + horizon - 1])
+    return np.asarray(Xw, "float32"), np.asarray(yw)
+
+def split_scale_window(base: pd.DataFrame, feat_cols, H: int):
+    """Build X/y, split chronologically, scale on train, then window."""
+    # label: future H-day direction
+    y_bin = (np.log(base[PRICE_COL]).shift(-H) - np.log(base[PRICE_COL]) > 0).astype("int8")
+    data = base.dropna(subset=feat_cols + [PRICE_COL]).join(y_bin.rename("y_bin")).dropna()
+    X_all = data[feat_cols].astype("float32").to_numpy()
+    y_all = data["y_bin"].to_numpy()
+
+    n = len(X_all); n_train = int(n * TRAIN_FRAC)
+    scaler = StandardScaler().fit(X_all[:n_train])      # fit on train only
+    X_tr_block = scaler.transform(X_all[:n_train])
+    X_te_block = scaler.transform(X_all[n_train - LOOKBACK:])  # overlap for first test window
+    y_tr_block = y_all[:n_train]
+    y_te_block = y_all[n_train - LOOKBACK:]
+
+    Xw_tr, yw_tr = make_windows_arrays(X_tr_block, y_tr_block, LOOKBACK, H)
+    Xw_te, yw_te = make_windows_arrays(X_te_block, y_te_block, LOOKBACK, H)
+
+    # carve out small validation (last 20% of train windows)
+    n_tr = len(Xw_tr); n_val = max(1, int(0.2 * n_tr))
+    X_tr_core, y_tr_core = Xw_tr[:-n_val], yw_tr[:-n_val]
+    X_val,     y_val     = Xw_tr[-n_val:],  yw_tr[-n_val:]
+
+    return (X_tr_core, y_tr_core, X_val, y_val, Xw_te, yw_te)
+
+# code chunk "Model (stacked LSTM classifier)" v1.0
+
+def build_lstm_classifier(timesteps: int, n_features: int) -> tf.keras.Model:
+    """2x32 LSTM + dropout + sigmoid head."""
+    m = Sequential()
+    for i in range(NUM_LAYERS):
+        m.add(layers.LSTM(UNITS, return_sequences=(i < NUM_LAYERS - 1),
+                          input_shape=None if i else (timesteps, n_features)))
+        if DROPOUT: m.add(layers.Dropout(DROPOUT))
+    m.add(layers.Dense(1, activation="sigmoid"))
+    m.compile(optimizer=optimizers.Adam(learning_rate=LR),
+              loss="binary_crossentropy", metrics=["accuracy"])
+    return m
+
+# code chunk "Imbalance & threshold utilities" v1.0
+
+def class_weights_from_labels(y: np.ndarray) -> dict:
+    """Compute class weights from training labels to counter class imbalance."""
+    classes = np.array([0, 1])
+    w = compute_class_weight(class_weight="balanced", classes=classes, y=y)
+    return {0: float(w[0]), 1: float(w[1])}
+
+def tune_threshold(y_val_true: np.ndarray, y_val_prob: np.ndarray, metric: str = "balacc"):
+    """Pick τ on validation to maximize Balanced Accuracy (or F1)."""
+    ts = np.linspace(0.05, 0.95, 37)
+    if metric == "balacc":
+        scores = [balanced_accuracy_score(y_val_true, (y_val_prob >= t).astype(int)) for t in ts]
+    else:
+        scores = [f1_score(y_val_true, (y_val_prob >= t).astype(int)) for t in ts]
+    t_best = float(ts[int(np.argmax(scores))])
+    return t_best, pd.DataFrame({"tau": ts, "score": scores})
+
+def score_table(y_true, y_prob, tau):
+    """Directional metrics at tuned τ + rank-based AUCs (threshold-free)."""
+    y_true = np.asarray(y_true).astype(int)
+    y_hat  = (np.asarray(y_prob) >= tau).astype(int)
+    return {
+        "Acc":      accuracy_score(y_true, y_hat),
+        "BalAcc":   balanced_accuracy_score(y_true, y_hat),
+        "F1":       f1_score(y_true, y_hat),
+        "ROC_AUC":  roc_auc_score(y_true, y_prob),
+        "PR_AUC":   average_precision_score(y_true, y_prob),
+        "IC":       spearmanr(y_true, y_prob).correlation,
+        "tau":      float(tau),
+    }
+
+# code chunk "Plots (learning, ROC/PR, confusion@τ)" v1.1
+
+def plot_learning_curves(history, title=""):
+    h = history.history if hasattr(history, "history") else history
+    df = pd.DataFrame({"epoch": np.arange(1, len(h["loss"])+1),
+                       "train": h["loss"],
+                       "val":   h.get("val_loss", [np.nan]*len(h["loss"]))})
+    dm = df.melt("epoch", var_name="split", value_name="loss")
+    plt.figure(figsize=(6,3))
+    ax = sns.lineplot(data=dm, x="epoch", y="loss", hue="split", marker="o")
+    ax.set(title=f"Learning curves {title}", xlabel="Epoch", ylabel="Loss"); ax.legend(title="")
+    plt.tight_layout(); plt.show()
+
+def plot_roc_pr(y_true, y_prob, title=""):
+    from sklearn.metrics import roc_curve, precision_recall_curve
+    fig, ax = plt.subplots(1,2, figsize=(9,3))
+    fpr, tpr, _ = roc_curve(y_true, y_prob)
+    ax[0].plot(fpr, tpr); ax[0].plot([0,1],[0,1],"k--",lw=1)
+    ax[0].set(title=f"ROC AUC={roc_auc_score(y_true,y_prob):.3f} {title}",
+              xlabel="FPR", ylabel="TPR")
+    prec, rec, _ = precision_recall_curve(y_true, y_prob)
+    ax[1].plot(rec, prec)
+    ax[1].set(title=f"PR AUC={average_precision_score(y_true,y_prob):.3f} {title}",
+              xlabel="Recall", ylabel="Precision")
+    plt.tight_layout(); plt.show()
+
+def plot_confusion_at_tau(y_true, y_prob, tau, title=""):
+    cm = confusion_matrix(y_true, (y_prob >= tau).astype(int), labels=[0,1])
+    fig, ax = plt.subplots(figsize=(3.6,3.2))
+    sns.heatmap(cm, annot=True, fmt="d", cbar=False, cmap="Blues", ax=ax)
+    ax.set(title=f"Confusion (τ={tau:.2f}) {title}", xlabel="Pred", ylabel="True")
+    plt.tight_layout(); plt.show()
+
+def plot_prob_hist(y_prob, title=""):
+    plt.figure(figsize=(6,3))
+    sns.histplot(y_prob, bins=40, kde=True)
+    plt.axvline(0.5, color="k", ls="--", lw=1)
+    plt.title(title or "Score distribution (test)"); plt.xlabel("P(Up)")
+    plt.tight_layout(); plt.show()
+
+```
+
+## Q3 \| Step 5 — Evaluation Metrics MAE and RMSE for each forecast horizon
+
+
+
+::: smaller
+**Target horizons:** **Short (1d)**, **Medium (5d)**, **Long (21d)** returns (log or pct).
+
+**Inputs:** OHLCV, features
 
 **Setup:** Walk-forward or expanding window; scale features **within train folds** only.
 
@@ -902,12 +1331,42 @@ Actionability: Use clusters for diversification across distinct risk buckets, pe
 **Outputs:** Learning curves, forecast vs. actual, error distribution, feature ablations.
 :::
 
+:::: callout-note
+::: tiny
+\*\*\* Assessment \*\*\*
+
+***Q3 — LSTM for Return Forecasting***
+
+
+Model has changed! this is place holder
+
+
+:::
+::::
+
 ## Q4 — Accuracy vs. Prediction Horizon
+
+## Q4 \| Step 1 —
+
+## Q4 \| Step 2 —
+
+## Q4 \| Step 3 —
+
+## Wrap up \|
 
 ::: smaller
 **Question:** How does error grow as horizon increases—and what does that imply?
 
-**Procedure:** - Train identical pipelines across horizons (1, 5, 10, 20, 60, 120d) - Record **MAE/RMSE**, **directional hit-rate**, **IC** per horizon - Plot **error(horizon)** and **hit-rate(horizon)** curves with CIs
+**Procedure:** - Train identical pipelines across horizons (1, 5, 21)  - Record **MAE/RMSE**, **directional hit-rate**, **IC** per horizon - Plot **error(horizon)** and **hit-rate(horizon)** curves with CIs
 
 **Interpretation:** - Information decays with horizon → **bias ↑**, **variance ↓/↑** (model-dependent) - Longer horizons may need **richer features** (macro/term structure) or **different models** - Practical takeaways for **portfolio holding periods** and **signal half-life**
 :::
+
+:::: callout-note
+::: tiny
+\*\*\* Assessment \*\*\* ***Q4 — Accuracy vs. Prediction Horizon***
+
+Model has changed! this is place holder
+
+:::
+::::
