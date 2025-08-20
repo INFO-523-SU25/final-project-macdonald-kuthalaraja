@@ -647,6 +647,237 @@ plt.tight_layout(rect=[0,0.06,1,1])
 plt.show()
 ```
 ::: 
+
+## Q2 \| Step 2 — Factor Features (2014–2024)
+```{python}
+#| label: q2-step2-features
+#| fig-width: 16
+#| fig-height: 8
+#| fig-align: center
+#| dpi: 150
+#| out-width: "100%"
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+assert isinstance(data.columns, pd.MultiIndex), "Expected yfinance panel: columns level-0=ticker, level-1=OHLCV"
+tickers = sorted(set(data.columns.get_level_values(0)))
+
+def features_for_ticker(tk, df):
+    """Compute per-ticker time series features then average 2014–2024."""
+    sub = df[tk].dropna()
+    if sub.shape[0] < 260:   # too little data
+        return None
+    ret = sub['Close'].pct_change()
+    mom12 = sub['Close'] / sub['Close'].shift(252) - 1            # 12m momentum
+    vol20 = ret.rolling(20).std() * np.sqrt(252)                  # 20d realized vol (annualized)
+    # size proxy: log median dollar volume (robust, fast)
+    dollar_vol = (sub['Close'] * sub['Volume']).replace(0, np.nan)
+    size_log = np.log(dollar_vol.replace(0, np.nan)).median()
+
+    out = pd.Series({
+        'Momentum12m' : mom12.mean(skipna=True),
+        'Vol20_Ann'   : vol20.mean(skipna=True),
+        'Size_logDV'  : size_log
+    }, name=tk)
+    return out
+
+rows = []
+for tk in tickers:
+    try:
+        r = features_for_ticker(tk, data)
+        if r is not None and r.notna().sum() == 3:
+            rows.append(r)
+    except Exception:
+        continue
+
+feat = pd.DataFrame(rows).dropna()
+feat.shape
+```
+
+```{python}
+#| label: q2-step2-visual
+#| fig-width: 16
+#| fig-height: 5
+#| fig-align: center
+#| dpi: 150
+#| out-width: "100%"
+
+fig, axes = plt.subplots(1,3, figsize=(16,5))
+axes[0].hist(feat['Momentum12m'], bins=40)
+axes[1].hist(feat['Vol20_Ann'], bins=40)
+axes[2].hist(feat['Size_logDV'], bins=40)
+axes[0].set_title("12m Momentum (avg 2014–2024)")
+axes[1].set_title("20d Realized Vol (avg, ann.)")
+axes[2].set_title("Log Dollar Volume (size proxy)")
+for ax in axes:
+    ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+plt.tight_layout(); plt.show()
+
+```
+
+## Q2 \| Step 3 — Factor Matrix & Standardize
+```{python}
+#| label: q2-step3-matrix
+#| fig-width: 16
+#| fig-height: 6
+#| fig-align: center
+#| dpi: 150
+#| out-width: "100%"
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+X = feat[['Momentum12m','Vol20_Ann','Size_logDV']].values
+scaler = StandardScaler()
+Xz = scaler.fit_transform(X)
+
+# quick 2D view (PCA) to see structure
+pca = PCA(n_components=2, random_state=42)
+Z = pca.fit_transform(Xz)
+
+fig, ax = plt.subplots(figsize=(16,6))
+ax.scatter(Z[:,0], Z[:,1], s=10, alpha=0.6)
+ax.set_title("PCA view of factor-exposure matrix (standardized)")
+ax.set_xlabel("PC1"); ax.set_ylabel("PC2")
+ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+plt.tight_layout(); plt.show()
+
+```
+
+## Q2 \| Step 4 — Hierarchical Clustering (Ward)
+```{python}
+#| label: q2-step4-linkage
+#| fig-width: 18
+#| fig-height: 7
+#| fig-align: center
+#| dpi: 150
+#| out-width: "100%"
+
+from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
+
+# Ward linkage on standardized features
+L = linkage(Xz, method='ward')
+
+fig, ax = plt.subplots(figsize=(18,7))
+dendrogram(L, truncate_mode='lastp', p=20, leaf_rotation=90, leaf_font_size=9, ax=ax)
+ax.set_title("Hierarchical Clustering Dendrogram (Ward) — last 20 merges")
+ax.set_xlabel("Merged leaves"); ax.set_ylabel("Distance")
+plt.tight_layout(); plt.show()
+
+# choose cluster count (e.g., k=6)
+k = 6
+labels = fcluster(L, k, criterion='maxclust')
+feat['Cluster'] = labels
+
+
+```
+
+## Q2 | Step 5 — Cluster Profiles & Sector Mix
+```{python}
+#| label: q2-step5-profiles
+#| fig-width: 18
+#| fig-height: 6.5
+#| fig-align: center
+#| dpi: 150
+#| out-width: "100%"
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Feature means per cluster (z-scored back using scaler params)
+centers = (pd.DataFrame(Xz, index=feat.index, columns=['Momentum12m','Vol20_Ann','Size_logDV'])
+           .assign(Cluster=feat['Cluster'])
+           .groupby('Cluster').mean())
+
+fig, ax = plt.subplots(figsize=(18,6.5))
+im = ax.imshow(centers.values, aspect='auto')
+ax.set_xticks(range(centers.shape[1])); ax.set_xticklabels(centers.columns)
+ax.set_yticks(range(centers.shape[0])); ax.set_yticklabels([f"C{c}" for c in centers.index])
+ax.set_title("Cluster Profiles (feature z-scores)")
+for i in range(centers.shape[0]):
+    for j in range(centers.shape[1]):
+        ax.text(j, i, f"{centers.values[i,j]:.2f}", ha='center', va='center', fontsize=9, color='white' if abs(centers.values[i,j])>0.6 else 'black')
+plt.colorbar(im, ax=ax, shrink=0.7, label="z-score")
+plt.tight_layout(); plt.show()
+
+
+
+```
+
+```{python}
+#| label: q2-step5-sectormix
+#| fig-width: 18
+#| fig-height: 7
+#| fig-align: center
+#| dpi: 150
+#| out-width: "100%"
+
+# Join sectors to clusters
+sector_col = [c for c in sp500.columns if c.lower().startswith("gics sector")][0]
+ticker_to_sector = sp500.set_index('Symbol')[sector_col].to_dict()
+
+tmp = feat[['Cluster']].copy()
+tmp['Sector'] = [ticker_to_sector.get(t, 'Unknown') for t in tmp.index]
+
+# Cluster × Sector (%)
+mix = (tmp.groupby(['Cluster','Sector']).size()
+       .unstack(fill_value=0)
+       .apply(lambda r: r/r.sum()*100, axis=1)
+       .sort_index())
+
+ax = mix.plot(kind='bar', stacked=True, figsize=(18,7), width=0.85)
+ax.set_title("Sector Mix within Clusters (%)")
+ax.set_xlabel("Cluster"); ax.set_ylabel("Percent of names")
+ax.legend(bbox_to_anchor=(0.5, -0.2), loc="upper center", ncol=5, frameon=False, fontsize=9, title="Sector")
+plt.tight_layout(rect=[0,0.08,1,1]); plt.show()
+```
+
+## Q2 | Step 6 — Validation (Silhouette & Bootstrap Stability)
+```{python}
+#| label: q2-step6-validate
+#| fig-width: 16
+#| fig-height: 6
+#| fig-align: center
+#| dpi: 150
+#| out-width: "100%"
+
+from sklearn.metrics import silhouette_score
+from sklearn.utils import resample
+from sklearn.metrics.cluster import adjusted_rand_score
+
+# Silhouette on standardized features for chosen k
+sil = silhouette_score(Xz, feat['Cluster'])
+print(f"Silhouette (k={feat['Cluster'].nunique()}): {sil:.3f}")
+
+# Lightweight bootstrap stability: ARI between two bootstrap clusterings
+def cluster_labels(Xz, k, seed):
+    Lb = linkage(Xz, method='ward')
+    return fcluster(Lb, k, criterion='maxclust')
+
+rng = np.random.default_rng(42)
+idx1 = rng.choice(len(Xz), size=int(0.8*len(Xz)), replace=True)
+idx2 = rng.choice(len(Xz), size=int(0.8*len(Xz)), replace=True)
+
+lab1 = cluster_labels(Xz[idx1], k, 1)
+lab2 = cluster_labels(Xz[idx2], k, 2)
+
+# Compare on intersection (rough proxy)
+common = min(len(lab1), len(lab2))
+ari = adjusted_rand_score(lab1[:common], lab2[:common])
+print(f"Bootstrap stability (ARI): {ari:.3f}")
+
+
+```
+
+**Goal:** Organize S&P 500 stocks into a taxonomy based on persistent risk/return exposures.  
+**Features:** 12-month momentum, 20-day realized volatility, log dollar-volume (size proxy).  
+**Method:** Build factor matrix (2014–2024 averages) → standardize → hierarchical clustering (Ward).  
+**Validation:** Silhouette ≈ _X.XXX_; bootstrap ARI ≈ _X.XXX_.  
+**Use:** Natural peer groups for portfolio construction, risk diversification, and rotation ideas.
+
 ## Q3 — LSTM for Return Forecasting
 
 ::: smaller
