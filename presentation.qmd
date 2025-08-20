@@ -648,7 +648,7 @@ plt.show()
 ```
 ::: 
 
-## Q2 \| Step 2 — Factor Features (2014–2024)
+## Q2 \| Step 2 — Factor Features 
 ```{python}
 #| label: q2-step2-features
 #| fig-width: 16
@@ -747,7 +747,7 @@ plt.tight_layout(); plt.show()
 
 ```
 
-## Q2 \| Step 4 — Hierarchical Clustering (Ward)
+## Q2 \| Step 4 — Hierarchical Clustering
 ```{python}
 #| label: q2-step4-linkage
 #| fig-width: 18
@@ -777,9 +777,9 @@ feat['Cluster'] = labels
 
 ## Q2 | Step 5 — Cluster Profiles & Sector Mix
 ```{python}
-#| label: q2-step5-profiles
-#| fig-width: 18
-#| fig-height: 6.5
+#| label: q2-step5-combined
+#| fig-width: 22
+#| fig-height: 7.5
 #| fig-align: center
 #| dpi: 150
 #| out-width: "100%"
@@ -787,56 +787,58 @@ feat['Cluster'] = labels
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Feature means per cluster (z-scored back using scaler params)
-centers = (pd.DataFrame(Xz, index=feat.index, columns=['Momentum12m','Vol20_Ann','Size_logDV'])
+# ---- Cluster Profiles (heatmap) ----
+centers = (pd.DataFrame(Xz, index=feat.index,
+                        columns=['Momentum12m','Vol20_Ann','Size_logDV'])
            .assign(Cluster=feat['Cluster'])
            .groupby('Cluster').mean())
 
-fig, ax = plt.subplots(figsize=(18,6.5))
-im = ax.imshow(centers.values, aspect='auto')
-ax.set_xticks(range(centers.shape[1])); ax.set_xticklabels(centers.columns)
-ax.set_yticks(range(centers.shape[0])); ax.set_yticklabels([f"C{c}" for c in centers.index])
-ax.set_title("Cluster Profiles (feature z-scores)")
-for i in range(centers.shape[0]):
-    for j in range(centers.shape[1]):
-        ax.text(j, i, f"{centers.values[i,j]:.2f}", ha='center', va='center', fontsize=9, color='white' if abs(centers.values[i,j])>0.6 else 'black')
-plt.colorbar(im, ax=ax, shrink=0.7, label="z-score")
-plt.tight_layout(); plt.show()
-
-
-
-```
-
-```{python}
-#| label: q2-step5-sectormix
-#| fig-width: 18
-#| fig-height: 7
-#| fig-align: center
-#| dpi: 150
-#| out-width: "100%"
-
-# Join sectors to clusters
+# ---- Sector Mix (% per cluster) ----
 sector_col = [c for c in sp500.columns if c.lower().startswith("gics sector")][0]
 ticker_to_sector = sp500.set_index('Symbol')[sector_col].to_dict()
 
 tmp = feat[['Cluster']].copy()
 tmp['Sector'] = [ticker_to_sector.get(t, 'Unknown') for t in tmp.index]
 
-# Cluster × Sector (%)
 mix = (tmp.groupby(['Cluster','Sector']).size()
        .unstack(fill_value=0)
        .apply(lambda r: r/r.sum()*100, axis=1)
        .sort_index())
 
-ax = mix.plot(kind='bar', stacked=True, figsize=(18,7), width=0.85)
-ax.set_title("Sector Mix within Clusters (%)")
-ax.set_xlabel("Cluster"); ax.set_ylabel("Percent of names")
-ax.legend(bbox_to_anchor=(0.5, -0.2), loc="upper center", ncol=5, frameon=False, fontsize=9, title="Sector")
-plt.tight_layout(rect=[0,0.08,1,1]); plt.show()
+# ---- Side-by-side layout ----
+fig, axes = plt.subplots(1, 2, figsize=(22, 7.5))
+
+# Left: cluster profiles heatmap
+im = axes[0].imshow(centers.values, aspect='auto')
+axes[0].set_xticks(range(centers.shape[1]))
+axes[0].set_xticklabels(centers.columns, fontsize=11)
+axes[0].set_yticks(range(centers.shape[0]))
+axes[0].set_yticklabels([f"C{c}" for c in centers.index], fontsize=11)
+axes[0].set_title("Cluster Profiles (feature z-scores)", fontsize=14)
+for i in range(centers.shape[0]):
+    for j in range(centers.shape[1]):
+        axes[0].text(j, i, f"{centers.values[i,j]:.2f}",
+                     ha='center', va='center', fontsize=9,
+                     color='white' if abs(centers.values[i,j]) > 0.6 else 'black')
+fig.colorbar(im, ax=axes[0], shrink=0.7, label="z-score")
+
+# Right: sector mix stacked bar
+mix.plot(kind='bar', stacked=True, ax=axes[1], width=0.85)
+axes[1].set_title("Sector Mix within Clusters (%)", fontsize=14)
+axes[1].set_xlabel("Cluster", fontsize=12)
+axes[1].set_ylabel("Percent of names", fontsize=12)
+axes[1].legend(bbox_to_anchor=(0.5, -0.25), loc="upper center",
+               ncol=4, frameon=False, fontsize=9, title="Sector")
+
+plt.tight_layout(rect=[0,0.1,1,1])
+plt.show()
+
+
 ```
 
 ## Q2 | Step 6 — Validation (Silhouette & Bootstrap Stability)
 ```{python}
+
 #| label: q2-step6-validate
 #| fig-width: 16
 #| fig-height: 6
@@ -845,24 +847,25 @@ plt.tight_layout(rect=[0,0.08,1,1]); plt.show()
 #| out-width: "100%"
 
 from sklearn.metrics import silhouette_score
-from sklearn.utils import resample
 from sklearn.metrics.cluster import adjusted_rand_score
+from scipy.cluster.hierarchy import linkage, fcluster
+import numpy as np
 
 # Silhouette on standardized features for chosen k
 sil = silhouette_score(Xz, feat['Cluster'])
 print(f"Silhouette (k={feat['Cluster'].nunique()}): {sil:.3f}")
 
 # Lightweight bootstrap stability: ARI between two bootstrap clusterings
-def cluster_labels(Xz, k, seed):
-    Lb = linkage(Xz, method='ward')
+def cluster_labels(Xz_slice, k):
+    Lb = linkage(Xz_slice, method='ward')
     return fcluster(Lb, k, criterion='maxclust')
 
 rng = np.random.default_rng(42)
 idx1 = rng.choice(len(Xz), size=int(0.8*len(Xz)), replace=True)
 idx2 = rng.choice(len(Xz), size=int(0.8*len(Xz)), replace=True)
 
-lab1 = cluster_labels(Xz[idx1], k, 1)
-lab2 = cluster_labels(Xz[idx2], k, 2)
+lab1 = cluster_labels(Xz[idx1], k)
+lab2 = cluster_labels(Xz[idx2], k)
 
 # Compare on intersection (rough proxy)
 common = min(len(lab1), len(lab2))
@@ -872,11 +875,19 @@ print(f"Bootstrap stability (ARI): {ari:.3f}")
 
 ```
 
-**Goal:** Organize S&P 500 stocks into a taxonomy based on persistent risk/return exposures.  
-**Features:** 12-month momentum, 20-day realized volatility, log dollar-volume (size proxy).  
-**Method:** Build factor matrix (2014–2024 averages) → standardize → hierarchical clustering (Ward).  
-**Validation:** Silhouette ≈ _X.XXX_; bootstrap ARI ≈ _X.XXX_.  
-**Use:** Natural peer groups for portfolio construction, risk diversification, and rotation ideas.
+::: callout-note
+:::: tiny
+*** Assessment ***
+
+Separation: The silhouette score indicates moderate cluster separation—typical for financial cross-sections where factor exposures overlap.
+
+Stability: The bootstrap ARI suggests the taxonomy is reasonably robust under resampling.
+
+Interpretation: Clusters align with economic styles (e.g., high-momentum growth, low-volatility defensives, small/illiquid cyclicals) and often cut across GICS sectors, revealing peer groups that sector labels miss.
+
+Actionability: Use clusters for diversification across distinct risk buckets, peer analysis, and rotation tilts. Re-validate periodically—style regimes and market microstructure can shift cluster boundaries.
+::::
+:::
 
 ## Q3 — LSTM for Return Forecasting
 
