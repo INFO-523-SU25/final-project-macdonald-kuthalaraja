@@ -771,6 +771,12 @@ By selecting **k = 6 clusters**, we capture a balance between **parsimony** (few
 
 ## Q2 | Step 5 — Cluster Profiles & Sector Mix
 ```{python}
+#| label: q2-step5-combined
+#| fig-width: 14
+#| fig-height: 6
+#| fig-align: center
+#| dpi: 150
+#| out-width: "80%"   # shrink within slide
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -794,31 +800,34 @@ mix = (tmp.groupby(['Cluster','Sector']).size()
        .sort_index())
 
 # ---- Side-by-side layout ----
-fig, axes = plt.subplots(1, 2, figsize=(22, 7.5))
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
 # Left: cluster profiles heatmap
 im = axes[0].imshow(centers.values, aspect='auto')
 axes[0].set_xticks(range(centers.shape[1]))
-axes[0].set_xticklabels(centers.columns, fontsize=11)
+axes[0].set_xticklabels(centers.columns, fontsize=10)
 axes[0].set_yticks(range(centers.shape[0]))
-axes[0].set_yticklabels([f"C{c}" for c in centers.index], fontsize=11)
-axes[0].set_title("Cluster Profiles (feature z-scores)", fontsize=14)
+axes[0].set_yticklabels([f"C{c}" for c in centers.index], fontsize=10)
+axes[0].set_title("Cluster Profiles (z-scores)", fontsize=12)
 for i in range(centers.shape[0]):
     for j in range(centers.shape[1]):
         axes[0].text(j, i, f"{centers.values[i,j]:.2f}",
-                     ha='center', va='center', fontsize=9,
+                     ha='center', va='center', fontsize=8,
                      color='white' if abs(centers.values[i,j]) > 0.6 else 'black')
 fig.colorbar(im, ax=axes[0], shrink=0.7, label="z-score")
 
 # Right: sector mix stacked bar
-mix.plot(kind='bar', stacked=True, ax=axes[1], width=0.85)
-axes[1].set_title("Sector Mix within Clusters (%)", fontsize=14)
-axes[1].set_xlabel("Cluster", fontsize=12)
-axes[1].set_ylabel("Percent of names", fontsize=12)
-axes[1].legend(bbox_to_anchor=(0.5, -0.25), loc="upper center",
-               ncol=4, frameon=False, fontsize=9, title="Sector")
+mix.plot(kind='bar', stacked=True, ax=axes[1], width=0.85, legend=False)
+axes[1].set_title("Sector Mix within Clusters (%)", fontsize=12)
+axes[1].set_xlabel("Cluster", fontsize=10)
+axes[1].set_ylabel("Percent", fontsize=10)
+axes[1].tick_params(axis='x', rotation=0)
 
-plt.tight_layout(rect=[0,0.1,1,1])
+# Put legend outside
+axes[1].legend(bbox_to_anchor=(1.05, 1), loc="upper left",
+               ncol=1, frameon=False, fontsize=8, title="Sector")
+
+plt.tight_layout()
 plt.show()
 
 
