@@ -7,17 +7,883 @@ author:
       - name: "College of Information Science, University of Arizona"
 description: "Project description"
 format:
-   html:
-    code-tools: true
+  html:
+    code-fold: true          # <— add this
+    code-summary: "Show code" # <— optional button label
     code-overflow: wrap
+    code-tools: true
     embed-resources: true
 editor: visual
 execute:
   warning: false
-  echo: false
+  echo: true
 jupyter: python3
 ---
 
-## Abstract
+## What is the S&P 500?
 
-Add project abstract here.
+::: smaller
+-   The **S&P 500 (Standard & Poor’s 500 Index)** is a stock market index that tracks the performance of **500 of the largest publicly traded companies** in the United States.\
+-   It is considered a **benchmark** for the overall U.S. stock market and economy.\
+-   The index covers companies across **11 sectors**, including technology, healthcare, finance, and consumer goods.
+-   Investors, analysts, and researchers use the S&P 500 to:
+    -   Measure market performance\
+    -   Benchmark investments\
+    -   Study trends in the U.S. economy\
+:::
+
+## Distribution of S&P 500
+
+::: smaller
+```{python}
+#| label: setup001
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# 1) Load current S&P 500 constituents with sectors from Wikipedia
+url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+dfs = pd.read_html(url, match="Symbol")
+df = dfs[0].copy()
+
+# 2) Normalize column names and get sector column robustly
+df.columns = [c.strip() for c in df.columns]
+sector_col = [c for c in df.columns if c.lower().startswith("gics sector")][0]
+
+# 3) Count & percentage by sector
+counts = df[sector_col].value_counts().sort_values(ascending=True)
+pct = (counts / counts.sum() * 100).round(1)
+
+# 4) Plot (horizontal bar chart with labels)
+fig, ax = plt.subplots(figsize=(10,6), dpi=150)
+ax.barh(counts.index, pct.values)
+
+for i, (v) in enumerate(pct.values):
+    ax.text(v, i, f"  {v:.1f}%", va="center")
+
+ax.set_xlabel("Percent of Companies")
+ax.set_ylabel("")
+ax.set_title("S&P 500 Companies by Sector (%)", pad=12)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+plt.tight_layout()
+plt.show()
+
+```
+:::
+
+## Our Research Questions (Overview)
+
+::: smaller
+-   **Q1:** Classify each 2024 trading day into **low / medium / high volatility** from recent price action & indicators.
+-   **Q2:** Use **hierarchical clustering** to build a taxonomy of S&P 500 stocks from **multi-factor risk/return** features for 2014-2024.
+-   **Q3:** Train an **LSTM** to forecast **short / medium / long**-horizon S&P 500 returns.
+-   **Q4:** Examine how **forecast accuracy degrades** with horizon—and what that implies about modeling **longer-term trends**.
+:::
+
+
+## Q1 — Volatility Regime Classification
+
+::: smallestest
+**Goal:** Classify each 2024 trading day into **Low / Medium / High** volatility regimes
+
+**Why it matters:** Regime awareness supports **risk control, hedging, and position sizing**
+
+**Features (look-back window):** - Realized volatility (20d rolling std of returns), intraday range\
+- Momentum & trend (MA ratios, RSI)\
+- Volume dynamics (volume/MA ratios)\
+- Market sentiment (VIX)
+
+**Labels:** **Tertiles of realized volatility** → Low / Medium / High
+
+**Models Tested:** Random Forest
+
+**Evaluation:** Macro-F1, balanced accuracy, confusion matrix
+:::
+
+## Q1 \| Step 1 — Feature Engineering
+
+::: tiny
+We construct key price-based and market indicators:
+
+-   **20-day rolling volatility**\
+-   **Intraday range** (High – Low) / Close\
+-   **Moving averages** (MA10 / MA50 ratio)\
+-   **Volume ratios** (Volume / MA20)\
+-   **RSI** (14-day)\
+-   **VIX index** (implied volatility)
+
+These features summarize short-term market dynamics and investor sentiment.
+:::
+
+```{python}
+import yfinance as yf
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# helper to normalize columns
+def normalize_columns(df):
+    if isinstance(df.columns, pd.MultiIndex):
+        df = df.copy()
+        df.columns = df.columns.get_level_values(0)
+    else:
+        # handle stringified tuples like "('Close','^GSPC')"
+        import ast
+        new_cols = []
+        for c in df.columns:
+            s = str(c)
+            if s.startswith("(") and "," in s:
+                try:
+                    t = ast.literal_eval(s)
+                    new_cols.append(t[0])
+                except Exception:
+                    new_cols.append(s)
+            else:
+                new_cols.append(s)
+        df = df.copy()
+        df.columns = new_cols
+    return df
+
+
+data = yf.download('^GSPC', start='2014-01-01', end='2024-12-31', auto_adjust=False)
+data = normalize_columns(data)
+
+
+vix = yf.download('^VIX', start='2014-01-01', end='2024-12-31', auto_adjust=False)
+vix = normalize_columns(vix)
+vix = vix[['Close']].rename(columns={'Close':'VIX'})
+
+# normalize indexes
+data.index = pd.to_datetime(data.index).tz_localize(None)
+vix.index   = pd.to_datetime(vix.index).tz_localize(None)
+
+# join safely
+data = data.join(vix, how='left')
+data['VIX'] = data['VIX'].ffill()
+
+# features needed for the plot
+data['Return'] = data['Close'].pct_change()
+data['Volatility20'] = data['Return'].rolling(20, min_periods=20).std() * np.sqrt(252)
+# Intraday range
+data['Range'] = (data['High'] - data['Low']) / data['Close']
+
+# Moving averages + ratio
+data['MA10'] = data['Close'].rolling(10, min_periods=10).mean()
+data['MA50'] = data['Close'].rolling(50, min_periods=50).mean()
+data['MA_ratio'] = data['MA10'] / data['MA50']
+
+# Volume ratios
+data['Vol_MA20'] = data['Volume'].rolling(20, min_periods=5).mean()
+data['Vol_ratio'] = data['Volume'] / data['Vol_MA20']
+
+# RSI (14)
+delta = data['Close'].diff()
+up = delta.clip(lower=0)
+down = (-delta).clip(lower=0)
+roll_up = up.rolling(14, min_periods=14).mean()
+roll_down = down.rolling(14, min_periods=14).mean().replace(0, np.nan)
+RS = roll_up / roll_down
+data['RSI'] = 100 - (100 / (1 + RS))
+
+
+cols = ['Volatility20','VIX','Range','MA_ratio','Vol_ratio','RSI']
+f = data.loc['2024', cols].dropna(how='all').copy()
+
+# Build small multiples
+fig, axes = plt.subplots(2, 3, figsize=(14,6), dpi=150, sharex=True)
+axes = axes.ravel()
+
+series_info = [
+    ('Volatility20', '20d Realized Vol (annualized)'),
+    ('VIX',          'VIX (implied vol)'),
+    ('Range',        'Intraday Range (H-L)/Close'),
+    ('MA_ratio',     'MA10 / MA50'),
+    ('Vol_ratio',    'Volume / MA20'),
+    ('RSI',          'RSI (14)')
+]
+
+for ax, (col, title) in zip(axes, series_info):
+    if col in f.columns:
+        ax.plot(f.index, f[col], linewidth=1.2)
+        ax.set_title(title)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+# Tidy layout
+for i in (3,4,5):
+    axes[i].set_xlabel("Date")
+plt.tight_layout()
+plt.show()
+
+
+```
+
+## Q1 \| Step 2 — Target Creation
+
+::: tiny
+We label each 2024 trading day as **Low / Medium / High** using tertiles of realized volatility, and visualize the assignments across the year.
+:::
+
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Guard: create targets if not already present 
+if 'df_2024' not in globals() or 'Vol_Regime' not in df_2024.columns:
+    # Build from Step 1 outputs
+    data['Return'] = data['Close'].pct_change()
+    data['Volatility20'] = data['Return'].rolling(20, min_periods=20).std() * np.sqrt(252)
+    df_2024 = data.loc['2024'].dropna(subset=['Volatility20']).copy()
+    low_q, high_q = df_2024['Return'].abs().quantile([0.33, 0.66])
+    df_2024['Vol_Regime'] = pd.cut(
+        df_2024['Return'].abs(),
+        bins=[-np.inf, low_q, high_q, np.inf],
+        labels=['Low','Medium','High']
+    )
+
+# Colors for regimes 
+colors = {"Low": "green", "Medium": "orange", "High": "red"}
+
+# Create combined figure 
+fig, axes = plt.subplots(1, 2, figsize=(14,5), dpi=150)
+
+# Volatility timeline with regimes
+ax = axes[0]
+for regime, color in colors.items():
+    s = df_2024[df_2024['Vol_Regime'] == regime]
+    ax.scatter(s.index, s['Volatility20'], s=15, alpha=0.7, color=color, label=regime)
+ax.set_title("Volatility Regimes Across 2024")
+ax.set_ylabel("20d Realized Vol (annualized)")
+ax.set_xlabel("Date")
+
+# Closing price with regimes
+ax = axes[1]
+ax.plot(df_2024.index, df_2024['Close'], color='black', linewidth=1, alpha=0.8)
+for regime, color in colors.items():
+    mask = df_2024['Vol_Regime'] == regime
+    ax.scatter(df_2024.index[mask], df_2024['Close'][mask], s=12, c=color, alpha=0.8)
+ax.set_title("S&P 500 Closing Price with Regimes (2024)")
+ax.set_xlabel("Date")
+ax.set_ylabel("Index Level")
+
+# Shared legend
+handles = [plt.Line2D([0],[0], marker='o', color='w', label=k,
+                      markerfacecolor=v, markersize=6) for k, v in colors.items()]
+fig.legend(handles=handles, labels=list(colors.keys()),
+           loc='upper center', ncol=3, frameon=False)
+
+plt.tight_layout(rect=[0,0,1,0.94])
+plt.show()
+
+```
+
+:::: smallest
+::: callout-note
+Balanced Labels — Days are evenly split into Low, Medium, High volatility using realized vol tertiles.
+
+Temporal Patterns — High-volatility clusters appear during market drawdowns, while low regimes align with calm uptrends.
+
+Practical Use — These labels provide the supervised learning target for Step 3 (model training).
+:::
+::::
+
+## Q1 \| Step 3 — Model Training
+
+::: tiny
+We train a **Random Forest classifier** on engineered features to predict volatility regimes.\
+Evaluation is done with a confusion matrix and Feature Importance ranking.
+:::
+
+:::: output-box
+::: tiny
+```{python}
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import ConfusionMatrixDisplay, classification_report
+
+# Ensure VIX exists (must have been joined in Step 1)
+assert 'VIX' in data.columns, "VIX missing on `data`. Run Step 1 cell that joins VIX."
+
+# Recompute features on the full `data` to be safe
+data = data.copy()
+data['Return'] = data['Close'].pct_change()
+data['Volatility20'] = data['Return'].rolling(20, min_periods=20).std() * np.sqrt(252)
+data['Range'] = (data['High'] - data['Low']) / data['Close']
+data['MA10'] = data['Close'].rolling(10, min_periods=10).mean()
+data['MA50'] = data['Close'].rolling(50, min_periods=50).mean()
+data['MA_ratio'] = data['MA10'] / data['MA50']
+data['Vol_MA20'] = data['Volume'].rolling(20, min_periods=5).mean()
+data['Vol_ratio'] = data['Volume'] / data['Vol_MA20']
+
+# Build 2024 frame + target labels
+df_2024 = data.loc['2024'].copy()
+df_2024['DailyVol'] = df_2024['Return'].abs()
+
+q1, q2 = df_2024['DailyVol'].quantile([0.33, 0.66])
+df_2024['Vol_Regime'] = pd.cut(
+    df_2024['DailyVol'],
+    bins=[-np.inf, q1, q2, np.inf],
+    labels=['Low','Medium','High']
+)
+
+# Feature matrix 
+features = ['Volatility20','Range','MA_ratio','Vol_ratio','RSI','VIX']
+
+# If RSI wasn't computed in this session, create it
+if 'RSI' not in df_2024.columns:
+    delta = data['Close'].diff()
+    up = delta.clip(lower=0)
+    down = (-delta).clip(lower=0)
+    roll_up = up.rolling(14, min_periods=14).mean()
+    roll_down = down.rolling(14, min_periods=14).mean().replace(0, np.nan)
+    RS = roll_up / roll_down
+    data['RSI'] = 100 - (100 / (1 + RS))
+    df_2024['RSI'] = data.loc[df_2024.index, 'RSI']
+
+# Make sure all features exist now
+missing = [c for c in features if c not in df_2024.columns]
+if missing:
+    raise ValueError(f"Missing features in df_2024: {missing}")
+
+# Fill NaNs from rolling windows
+df_2024[features] = df_2024[features].bfill().ffill()
+
+# Drop any remaining NaNs along features/target
+df_2024 = df_2024.dropna(subset=features + ['Vol_Regime'])
+
+X = df_2024[features]
+y = df_2024['Vol_Regime']
+
+# Time-aware split (no shuffling)
+split_idx = int(len(df_2024) * 0.75)
+X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
+y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
+
+# Train model
+rf = RandomForestClassifier(n_estimators=300, random_state=42)
+rf.fit(X_train, y_train)
+
+# Evaluate
+y_pred = rf.predict(X_test)
+print(classification_report(y_test, y_pred))
+```
+:::
+::::
+
+```{python}
+# Side by side: Confusion Matrix + Feature Importance
+fig, axes = plt.subplots(1, 2, figsize=(12,5), dpi=140)
+
+# Confusion Matrix
+ConfusionMatrixDisplay.from_predictions(
+    y_test, y_pred, cmap="Blues", ax=axes[0]
+)
+axes[0].set_title("Confusion Matrix — Random Forest (2024)")
+
+# Feature Importance
+importances = pd.Series(rf.feature_importances_, index=X_train.columns).sort_values()
+importances.plot(kind='barh', ax=axes[1], color="steelblue")
+axes[1].set_title("Feature Importance — Random Forest (2024)")
+
+plt.tight_layout()
+plt.show()
+
+```
+
+## Q1 \| Step 4 — Evaluation
+
+:::: tiny
+We evaluate model performance with accuracy, balanced accuracy, macro-F1, a classification report, and visual diagnostics.
+
+::: output-box
+```{python}
+from sklearn.metrics import (
+    accuracy_score, balanced_accuracy_score, f1_score,
+    classification_report, confusion_matrix, ConfusionMatrixDisplay
+)
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# Guard: ensure we have rf, X_train, X_test, y_train, y_test from Step 3 
+try:
+    rf
+    X_test
+    y_test
+except NameError as e:
+    raise RuntimeError("Step 3 must run before Step 4 (train rf and create train/test splits).") from e
+
+# Predictions
+y_pred = rf.predict(X_test)
+
+# Metrics
+acc  = accuracy_score(y_test, y_pred)
+bacc = balanced_accuracy_score(y_test, y_pred)
+mf1  = f1_score(y_test, y_pred, average="macro")
+
+print(f"Accuracy:           {acc:.3f}")
+print(f"Balanced Accuracy:  {bacc:.3f}")
+print(f"Macro F1:           {mf1:.3f}\n")
+
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+
+
+```
+:::
+::::
+
+```{python}
+# --- Build timeline (aligned to test window) ---
+timeline = pd.DataFrame(index=X_test.index)
+timeline["true"] = y_test
+timeline["pred"] = y_pred
+
+# Map regimes to numeric rows and colors
+order  = {"Low":0, "Medium":1, "High":2}
+colors = {"Low":"green", "Medium":"orange", "High":"red"}
+
+# Convert to numeric floats (fixes the categorical + float error)
+ypos_true = timeline["true"].map(order).astype(float)
+ypos_pred = timeline["pred"].map(order).astype(float)
+
+# --- Plot: clearer rows, better legend ---
+from matplotlib.lines import Line2D
+fig, ax = plt.subplots(figsize=(12,4), dpi=150)
+
+# True regimes (squares, slightly above row center)
+ax.scatter(
+    timeline.index, ypos_true + 0.18,
+    s=42, c=timeline["true"].map(colors),
+    marker='s', alpha=0.9, label="True"
+)
+
+# Predicted regimes (circles, slightly below row center)
+ax.scatter(
+    timeline.index, ypos_pred - 0.18,
+    s=42, c=timeline["pred"].map(colors),
+    marker='o', alpha=0.75, label="Predicted"
+)
+
+# y-axis formatting
+ax.set_yticks([0,1,2])
+ax.set_yticklabels(["Low","Medium","High"])
+ax.set_ylim(-0.5, 2.5)
+
+# faint row guides
+for y in [0,1,2]:
+    ax.hlines(y, xmin=timeline.index.min(), xmax=timeline.index.max(),
+              colors="#dddddd", linestyles="--", linewidth=0.8, zorder=0)
+
+# titles / labels
+ax.set_title("Volatility Regimes — True vs Predicted (2024 Test Window)")
+ax.set_xlabel("Date")
+ax.set_ylabel("Regime")
+
+# compact, informative legend (shape = True/Pred, color = regime)
+legend_elements = [
+    Line2D([0],[0], marker='s', color='w', label='True', markerfacecolor='gray', markersize=8),
+    Line2D([0],[0], marker='o', color='w', label='Predicted', markerfacecolor='gray', markersize=8),
+    Line2D([0],[0], marker='o', color='w', label='Low',    markerfacecolor='green',  markersize=8),
+    Line2D([0],[0], marker='o', color='w', label='Medium', markerfacecolor='orange', markersize=8),
+    Line2D([0],[0], marker='o', color='w', label='High',   markerfacecolor='red',    markersize=8),
+]
+ax.legend(handles=legend_elements, ncol=5, loc="upper center",
+          bbox_to_anchor=(0.5, -0.12), frameon=False)
+
+# clean style
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+plt.tight_layout(rect=[0,0,1,0.93])
+plt.show()
+
+
+```
+
+## Q1 \| Step 5 — Insights & Takeaways
+
+::: tiny
+**Feature signals** - 20-day realized volatility and **VIX** are the strongest drivers. - **RSI** and **volume ratios** add incremental, smaller lift.
+
+**Model performance** - Random Forest reached **balanced accuracy / macro-F1 ≈ 0.6–0.7** (holdout). - Most errors are in the **Medium** class (overlaps Low/High).
+
+**Market interpretation** - **Low** and **High** regimes are easier to separate (calm vs. turbulence). - **Medium** reflects transition phases where signals are noisy.
+
+**Practical lesson** - Regime classification is useful for **risk flagging** (position sizing, hedging). - The “middle ground” remains hardest to predict—consistent with trading intuition.
+:::
+
+```{python}
+fig, axes = plt.subplots(1, 2, figsize=(12,4), dpi=150)
+
+# (a) Timeline of regimes
+colors = {'Low':'green','Medium':'orange','High':'red'}
+for regime, color in colors.items():
+    s = df_2024[df_2024['Vol_Regime'] == regime]
+    axes[0].scatter(s.index, s['Volatility20'], s=12, alpha=0.7, label=regime, color=color)
+axes[0].set_title("Volatility Regimes Across 2024")
+axes[0].set_ylabel("20d Realized Vol (annualized)")
+axes[0].legend()
+
+# (b) Feature importances
+importances = pd.Series(rf.feature_importances_, index=features).sort_values()
+importances.plot(kind='barh', ax=axes[1], color="steelblue")
+axes[1].set_title("Feature Importance — Random Forest")
+
+plt.tight_layout()
+plt.show()
+```
+
+## Q2 \| Hierarchical Clustering
+
+::: smallestest
+**Goal:** Organize S&P 500 stocks into a taxonomy based on persistent risk/return exposures.
+
+**Feature design:**\
+- Momentum (12-month return)\
+- Volatility (20-day realized volatility)\
+- Size (log market capitalization)
+
+**Method:**\
+- Construct factor-exposure matrix for each stock **(2014–2024 averages)** - Apply **hierarchical clustering (Ward’s method)**\
+- Visualize dendrogram and clusters
+
+**Validation:**\
+- Stability of clusters across bootstrap samples\
+- Interpretability of economic themes in groups (e.g., growth vs value, high vs low vol)
+
+**Use:**\
+- Identify **natural peer groups** of stocks\
+- Aid **portfolio construction, risk diversification, sector rotation strategies**
+:::
+
+## Q2 \| Step 1 — Get Data
+::: smallestest
+```{python}
+
+import yfinance as yf
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Get S&P500 tickers from Wikipedia
+table = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")
+sp500 = table[0]
+
+# Fix tickers for Yahoo Finance format
+swap_map = {"BRK.B": "BRK-B", "BF.B": "BF-B"}
+tickers = [swap_map.get(t, t) for t in sp500['Symbol'].unique().tolist()]
+
+# Download OHLCV data (2014–2024) — not used in treemap but for consistency
+data = yf.download(
+    tickers, start="2014-01-01", end="2024-12-31",
+    group_by="ticker", auto_adjust=True, threads=True
+)
+
+# Sector + Sub-Industry counts
+sector_col = "GICS Sector"
+sub_col    = "GICS Sub-Industry"
+
+sec_counts = sp500[sector_col].value_counts().reset_index()
+sec_counts.columns = ["Sector","Count"]
+
+sub_counts = (
+    sp500.groupby([sector_col, sub_col])["Symbol"]
+         .count().reset_index()
+         .rename(columns={sector_col:"Sector", sub_col:"SubIndustry", "Symbol":"Count"})
+)
+
+# Treemap
+try:
+    import squarify
+except ImportError:
+    import sys, subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "squarify", "-q"])
+    import squarify
+
+import matplotlib.cm as cm
+from matplotlib.patches import Patch
+
+sectors = sec_counts["Sector"].tolist()
+cmap = cm.get_cmap("tab20", len(sectors))
+sector_to_color = {s: cmap(i) for i, s in enumerate(sectors)}
+
+fig, (axL, axR) = plt.subplots(1, 2, figsize=(22,11), dpi=150)
+
+# (A) Sector-level
+squarify.plot(
+    sizes=sec_counts["Count"].values,
+    label=[f"{s}\n({c})" for s,c in zip(sec_counts["Sector"], sec_counts["Count"])],
+    color=[sector_to_color[s] for s in sec_counts["Sector"]],
+    alpha=0.95, text_kwargs={"fontsize":11}, ax=axL, pad=True
+)
+axL.axis("off")
+axL.set_title("Sectors (size = # companies)", fontsize=14, pad=8)
+
+# (B) Sub-industry (color by parent sector)
+df_t = sub_counts[sub_counts["Count"] > 0].copy()
+df_t["Label"] = df_t["SubIndustry"] + "\n(" + df_t["Count"].astype(str) + ")"
+squarify.plot(
+    sizes=df_t["Count"].values,
+    label=df_t["Label"].values,
+    color=[sector_to_color[s] for s in df_t["Sector"]],
+    alpha=0.95, text_kwargs={"fontsize":7}, ax=axR, pad=True
+)
+axR.axis("off")
+axR.set_title("Sub-Industries (color = parent sector)", fontsize=14, pad=8)
+
+# Shared legend
+handles = [Patch(facecolor=sector_to_color[s], label=s) for s in sectors]
+fig.legend(handles=handles, loc="lower center", bbox_to_anchor=(0.5, 0.03),
+           ncol=min(6, len(sectors)), frameon=False, fontsize=10,
+           title="Sector", title_fontsize=11)
+
+plt.tight_layout(rect=[0,0.06,1,1])
+plt.show()
+```
+::: 
+
+## Q2 \| Step 2 — Factor Features 
+```{python}
+#| label: q2-step2-features
+#| fig-width: 16
+#| fig-height: 8
+#| fig-align: center
+#| dpi: 150
+#| out-width: "100%"
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+assert isinstance(data.columns, pd.MultiIndex), "Expected yfinance panel: columns level-0=ticker, level-1=OHLCV"
+tickers = sorted(set(data.columns.get_level_values(0)))
+
+def features_for_ticker(tk, df):
+    """Compute per-ticker time series features then average 2014–2024."""
+    sub = df[tk].dropna()
+    if sub.shape[0] < 260:   # too little data
+        return None
+    ret = sub['Close'].pct_change()
+    mom12 = sub['Close'] / sub['Close'].shift(252) - 1            # 12m momentum
+    vol20 = ret.rolling(20).std() * np.sqrt(252)                  # 20d realized vol (annualized)
+    # size proxy: log median dollar volume (robust, fast)
+    dollar_vol = (sub['Close'] * sub['Volume']).replace(0, np.nan)
+    size_log = np.log(dollar_vol.replace(0, np.nan)).median()
+
+    out = pd.Series({
+        'Momentum12m' : mom12.mean(skipna=True),
+        'Vol20_Ann'   : vol20.mean(skipna=True),
+        'Size_logDV'  : size_log
+    }, name=tk)
+    return out
+
+rows = []
+for tk in tickers:
+    try:
+        r = features_for_ticker(tk, data)
+        if r is not None and r.notna().sum() == 3:
+            rows.append(r)
+    except Exception:
+        continue
+
+feat = pd.DataFrame(rows).dropna()
+feat.shape
+```
+
+```{python}
+
+fig, axes = plt.subplots(1,3, figsize=(16,5))
+axes[0].hist(feat['Momentum12m'], bins=40)
+axes[1].hist(feat['Vol20_Ann'], bins=40)
+axes[2].hist(feat['Size_logDV'], bins=40)
+axes[0].set_title("12m Momentum (avg 2014–2024)")
+axes[1].set_title("20d Realized Vol (avg, ann.)")
+axes[2].set_title("Log Dollar Volume (size proxy)")
+for ax in axes:
+    ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+plt.tight_layout(); plt.show()
+
+```
+::: tiny
+#### Insight
+We transform raw OHLCV data into **persistent factor exposures** for each stock:
+- **Momentum:** 12-month return signal  
+- **Volatility:** 20-day realized volatility (annualized)  
+- **Size:** log of median dollar volume as a liquidity/scale proxy  
+
+This step condenses 10 years of daily data into **stable, comparable features** that form the input for clustering.
+:::
+## Q2 \| Step 3 — Factor Matrix & Standardize
+```{python}
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+X = feat[['Momentum12m','Vol20_Ann','Size_logDV']].values
+scaler = StandardScaler()
+Xz = scaler.fit_transform(X)
+
+# quick 2D view (PCA) to see structure
+pca = PCA(n_components=2, random_state=42)
+Z = pca.fit_transform(Xz)
+
+fig, ax = plt.subplots(figsize=(16,6))
+ax.scatter(Z[:,0], Z[:,1], s=10, alpha=0.6)
+ax.set_title("PCA view of factor-exposure matrix (standardized)")
+ax.set_xlabel("PC1"); ax.set_ylabel("PC2")
+ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+plt.tight_layout(); plt.show()
+
+```
+::: tiny
+We convert raw features into a **standardized factor matrix**, ensuring each exposure (momentum, volatility, size) is on the same scale.  
+A quick **PCA projection** reveals broad structure in the data — clusters and gradients emerge, hinting at natural groupings before formal clustering.
+:::
+
+## Q2 \| Step 4 — Hierarchical Clustering
+```{python}
+
+from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
+
+# Ward linkage on standardized features
+L = linkage(Xz, method='ward')
+
+fig, ax = plt.subplots(figsize=(18,7))
+dendrogram(L, truncate_mode='lastp', p=20, leaf_rotation=90, leaf_font_size=9, ax=ax)
+ax.set_title("Hierarchical Clustering Dendrogram (Ward) — last 20 merges")
+ax.set_xlabel("Merged leaves"); ax.set_ylabel("Distance")
+plt.tight_layout(); plt.show()
+
+# choose cluster count (e.g., k=6)
+k = 6
+labels = fcluster(L, k, criterion='maxclust')
+feat['Cluster'] = labels
+
+
+```
+::: tiny 
+We apply **hierarchical clustering (Ward’s method)** on the standardized factor matrix.  
+The dendrogram illustrates how stocks progressively merge into larger groups.  
+By selecting **k = 6 clusters**, we capture a balance between **parsimony** (few broad groups) and **interpretability** (distinct economic themes).  
+:::
+
+## Q2 | Step 5 — Cluster Profiles & Sector Mix
+```{python}
+#| label: q2-step5-combined
+#| fig-width: 14
+#| fig-height: 6
+#| fig-align: center
+#| dpi: 150
+#| out-width: "80%"   # shrink within slide
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ---- Cluster Profiles (heatmap) ----
+centers = (pd.DataFrame(Xz, index=feat.index,
+                        columns=['Momentum12m','Vol20_Ann','Size_logDV'])
+           .assign(Cluster=feat['Cluster'])
+           .groupby('Cluster').mean())
+
+# ---- Sector Mix (% per cluster) ----
+sector_col = [c for c in sp500.columns if c.lower().startswith("gics sector")][0]
+ticker_to_sector = sp500.set_index('Symbol')[sector_col].to_dict()
+
+tmp = feat[['Cluster']].copy()
+tmp['Sector'] = [ticker_to_sector.get(t, 'Unknown') for t in tmp.index]
+
+mix = (tmp.groupby(['Cluster','Sector']).size()
+       .unstack(fill_value=0)
+       .apply(lambda r: r/r.sum()*100, axis=1)
+       .sort_index())
+
+# ---- Side-by-side layout ----
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+# Left: cluster profiles heatmap
+im = axes[0].imshow(centers.values, aspect='auto')
+axes[0].set_xticks(range(centers.shape[1]))
+axes[0].set_xticklabels(centers.columns, fontsize=10)
+axes[0].set_yticks(range(centers.shape[0]))
+axes[0].set_yticklabels([f"C{c}" for c in centers.index], fontsize=10)
+axes[0].set_title("Cluster Profiles (z-scores)", fontsize=12)
+for i in range(centers.shape[0]):
+    for j in range(centers.shape[1]):
+        axes[0].text(j, i, f"{centers.values[i,j]:.2f}",
+                     ha='center', va='center', fontsize=8,
+                     color='white' if abs(centers.values[i,j]) > 0.6 else 'black')
+fig.colorbar(im, ax=axes[0], shrink=0.7, label="z-score")
+
+# Right: sector mix stacked bar
+mix.plot(kind='bar', stacked=True, ax=axes[1], width=0.85, legend=False)
+axes[1].set_title("Sector Mix within Clusters (%)", fontsize=12)
+axes[1].set_xlabel("Cluster", fontsize=10)
+axes[1].set_ylabel("Percent", fontsize=10)
+axes[1].tick_params(axis='x', rotation=0)
+
+# Put legend outside
+axes[1].legend(bbox_to_anchor=(1.05, 1), loc="upper left",
+               ncol=1, frameon=False, fontsize=8, title="Sector")
+
+plt.tight_layout()
+plt.show()
+
+
+```
+
+::: tiny 
+This step connects **quantitative cluster features** with their **economic context**:  
+- **Left (heatmap):** Each cluster shows distinct profiles in **momentum**, **volatility**, and **size**.  
+- **Right (sector mix):** Clusters reveal **different sector compositions**, helping interpret groups as, e.g., “large low-vol staples” vs. “small high-momentum tech.”  
+Together, these views highlight that clusters are not arbitrary — they align with **intuitive economic themes** and sector structures.  
+:::
+
+## Q2 | Step 6 — Validation (Silhouette & Bootstrap Stability)
+```{python}
+
+from sklearn.metrics import silhouette_score
+from sklearn.metrics.cluster import adjusted_rand_score
+from scipy.cluster.hierarchy import linkage, fcluster
+import numpy as np
+
+# Silhouette on standardized features for chosen k
+sil = silhouette_score(Xz, feat['Cluster'])
+print(f"Silhouette (k={feat['Cluster'].nunique()}): {sil:.3f}")
+
+# Lightweight bootstrap stability: ARI between two bootstrap clusterings
+def cluster_labels(Xz_slice, k):
+    Lb = linkage(Xz_slice, method='ward')
+    return fcluster(Lb, k, criterion='maxclust')
+
+rng = np.random.default_rng(42)
+idx1 = rng.choice(len(Xz), size=int(0.8*len(Xz)), replace=True)
+idx2 = rng.choice(len(Xz), size=int(0.8*len(Xz)), replace=True)
+
+lab1 = cluster_labels(Xz[idx1], k)
+lab2 = cluster_labels(Xz[idx2], k)
+
+# Compare on intersection (rough proxy)
+common = min(len(lab1), len(lab2))
+ari = adjusted_rand_score(lab1[:common], lab2[:common])
+print(f"Bootstrap stability (ARI): {ari:.3f}")
+
+
+```
+
+::: callout-note
+:::: tiny
+*** Assessment ***
+
+Separation: The silhouette score indicates moderate cluster separation—typical for financial cross-sections where factor exposures overlap.
+
+Stability: The bootstrap ARI suggests the taxonomy is reasonably robust under resampling.
+
+Interpretation: Clusters align with economic styles (e.g., high-momentum growth, low-volatility defensives, small/illiquid cyclicals) and often cut across GICS sectors, revealing peer groups that sector labels miss.
+
+Actionability: Use clusters for diversification across distinct risk buckets, peer analysis, and rotation tilts. Re-validate periodically—style regimes and market microstructure can shift cluster boundaries.
+::::
+:::
