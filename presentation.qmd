@@ -561,11 +561,6 @@ plt.show()
 ## Q2 \| Step 1 — Get Data
 ::: smallestest
 ```{python}
-#| fig-width: 22
-#| fig-height: 11
-#| fig-align: center
-#| dpi: 150
-#| out-width: "100%"
 
 import yfinance as yf
 import pandas as pd
@@ -697,12 +692,6 @@ feat.shape
 ```
 
 ```{python}
-#| label: q2-step2-visual
-#| fig-width: 16
-#| fig-height: 5
-#| fig-align: center
-#| dpi: 150
-#| out-width: "100%"
 
 fig, axes = plt.subplots(1,3, figsize=(16,5))
 axes[0].hist(feat['Momentum12m'], bins=40)
@@ -727,12 +716,6 @@ This step condenses 10 years of daily data into **stable, comparable features** 
 :::
 ## Q2 \| Step 3 — Factor Matrix & Standardize
 ```{python}
-#| label: q2-step3-matrix
-#| fig-width: 16
-#| fig-height: 6
-#| fig-align: center
-#| dpi: 150
-#| out-width: "100%"
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -761,12 +744,6 @@ A quick **PCA projection** reveals broad structure in the data — clusters and 
 
 ## Q2 \| Step 4 — Hierarchical Clustering
 ```{python}
-#| label: q2-step4-linkage
-#| fig-width: 18
-#| fig-height: 7
-#| fig-align: center
-#| dpi: 150
-#| out-width: "100%"
 
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
 
@@ -794,12 +771,6 @@ By selecting **k = 6 clusters**, we capture a balance between **parsimony** (few
 
 ## Q2 | Step 5 — Cluster Profiles & Sector Mix
 ```{python}
-#| label: q2-step5-combined
-#| fig-width: 22
-#| fig-height: 7.5
-#| fig-align: center
-#| dpi: 150
-#| out-width: "100%"
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -862,13 +833,6 @@ Together, these views highlight that clusters are not arbitrary — they align w
 
 ## Q2 | Step 6 — Validation (Silhouette & Bootstrap Stability)
 ```{python}
-
-#| label: q2-step6-validate
-#| fig-width: 16
-#| fig-height: 6
-#| fig-align: center
-#| dpi: 150
-#| out-width: "100%"
 
 from sklearn.metrics import silhouette_score
 from sklearn.metrics.cluster import adjusted_rand_score
