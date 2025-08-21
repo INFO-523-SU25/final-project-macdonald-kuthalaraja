@@ -895,15 +895,11 @@ Interpretation: Clusters align with economic styles (e.g., high-momentum growth,
 Actionability: Use clusters for diversification across distinct risk buckets, peer analysis, and rotation tilts. Re-validate periodically—style regimes and market microstructure can shift cluster boundaries.
 :::
 ::::
-
-## Part 2
-
--   **Q3:** Can a Long Short-Term Memory **LSTM** model accurately forecast short, medium, or long term S&P 500 returns?
--   **Q4:** How does forecast accuracy degrade as a function of prediction horizon, and what does this suggest about LSTM’s ability to model longer term financial trends?
-
 ## Q3 — LSTM for Return Forecasting
 
-## Q3 \| Step 1 — Data Acquisition 
+
+
+## Q3 \| Data Acquisition
 
 Download OHLCV for `^GSPC(SPX)`, and volatility indices: `^VIX`, `^VVIX`, `^VIX9D` via `yfinance`
 
@@ -1024,9 +1020,7 @@ merged_df.to_csv("data/merged_df.csv", index=False)
 
 ```
 
-
-
-##
+## 
 
 ```{python}
 print("\nShape:", merged_df.shape)
@@ -1047,39 +1041,38 @@ is_chronological = df['date'].is_monotonic_increasing
 print("DataFrame is in chronological order:", is_chronological)
 ```
 
-
-## Q3 \| Step 2 — Feature Engineering/Standardization
+## Q3 \| Feature Engineering/Standardization
 
 ::: tiny
-
 The function `add_features` creates the following features:
 
-- **`log_ret`**  
-  Daily log return of the index. Captures day-to-day changes in price.
+-   **`log_ret`**\
+    Daily log return of the index. Captures day-to-day changes in price.
 
-- **`ema_{span}`**  
-  Exponential moving average (default 20 days). Smooths prices to show the trend.
+-   **`ema_{span}`**\
+    Exponential moving average (default 20 days). Smooths prices to show the trend.
 
-- **`ema_gap_pct`**  
-  Difference between the price and its EMA, expressed as a percent.  
-  Positive = price above trend, Negative = price below trend.
+-   **`ema_gap_pct`**\
+    Difference between the price and its EMA, expressed as a percent.\
+    Positive = price above trend, Negative = price below trend.
 
-- **`rv{window}`**  
-  Realized volatility over a rolling window (default 20 days).  
-  Measures how much returns fluctuate.
+-   **`rv{window}`**\
+    Realized volatility over a rolling window (default 20 days).\
+    Measures how much returns fluctuate.
 
-- **Volatility index features** (if data is available):  
-  - `{col}_pct`: Daily percent change in VIX, VIX9D, or VVIX.  
-  - `{col}_z`: How unusual the volatility level is compared to the past year.
+-   **Volatility index features** (if data is available):
 
-- **`vol_proxy`**  
-  A single “volatility measure” used in modeling.  
-  - Can be the 20-day realized volatility (`rv20`)  
-  - Or the VVIX index (if chosen).
+    -   `{col}_pct`: Daily percent change in VIX, VIX9D, or VVIX.\
+    -   `{col}_z`: How unusual the volatility level is compared to the past year.
 
+-   **`vol_proxy`**\
+    A single “volatility measure” used in modeling.
+
+    -   Can be the 20-day realized volatility (`rv20`)\
+    -   Or the VVIX index (if chosen).
 :::
 
-## Q3 \| Step 3 — Model Architecture LSTM
+## Q3 \| Model Architecture LSTM
 
 ```{python}
 # --- Imports
@@ -1330,60 +1323,35 @@ assert PRICE_COL not in features_df.columns, "features_df must not include price
 df_prices = df_raw.set_index("date")[[PRICE_COL]]
 base = features_df.join(df_prices, how="inner")
 
-print("Features:", feat_cols)
-print("Rows:", len(base), "| Span:", base.index.min().date(), "→", base.index.max().date())
+# print("Features:", feat_cols)
+# print("Rows:", len(base), "| Span:", base.index.min().date(), "→", base.index.max().date())
 
-# --- Train, tune, plot
-all_scores = []
-for H in HORIZONS:
-    print("\n" + "="*72)
-    print(f"Training horizon H={H}")
-    X_tr, y_tr, X_val, y_val, X_te, y_te = split_scale_window(base, feat_cols, H)
 
-    model = build_lstm_classifier(LOOKBACK, len(feat_cols))
-    cw = class_weights_from_labels(y_tr)
-
-    history = model.fit(
-        X_tr, y_tr,
-        validation_data=(X_val, y_val),
-        epochs=EPOCHS, batch_size=BATCH,
-        class_weight=cw, verbose=0
-    )
-
-    # Predictions
-    y_val_prob = model.predict(X_val, verbose=0).ravel()
-    y_te_prob  = model.predict(X_te,  verbose=0).ravel()
-
-    # Threshold tuning on validation
-    tau, _ = tune_threshold(y_val, y_val_prob, metric="balacc")
-
-    # Scores on test
-    s = score_table(y_te, y_te_prob, tau)
-    s["H"] = H
-    all_scores.append(s)
-    print(f"Test metrics (H={H}):", {k: (round(v,4) if isinstance(v,float) else v) for k,v in s.items()})
-
-    # Plots
-    plot_learning_curves(history, title=f"H={H}")
-    plot_roc_pr(y_val, y_val_prob, title=f"H={H} (validation)")
-    plot_roc_pr(y_te,  y_te_prob,   title=f"H={H} (test)")
-    plot_confusion_at_tau(y_te, y_te_prob, tau, title=f"H={H} (test)")
-    plot_prob_hist(y_te_prob, title=f"H={H} (test)")
-
-# --- Summary table
-scores_df = pd.DataFrame(all_scores)[["H","Acc","BalAcc","F1","ROC_AUC","PR_AUC","IC","tau"]]
-try:
-    from IPython.display import display
-    display(scores_df.sort_values("H").reset_index(drop=True))
-except Exception:
-    print(scores_df.sort_values("H").reset_index(drop=True))
 
 ```
+::: {layout-ncol=2}
+![](images/1.png){alt="Left image" height=65%}
+![](images/1.png){alt="Left image" height=65%}
+::: 
+
+##
+::: {layout-ncol=2}
+![](images/3.png)
+:::
+##
+::: {layout-ncol=2}
+![](images/4.png){alt="Left image" height=65%}
+
+:::
+
+##
+::: {layout-ncol=2}
+![](images/5.png){alt="Left image" height=65%}
+
+:::
 
 
-## Q3 \| Step 4 — Evaluation Metrics MAE and RMSE for each forecast horizon
-
-
+## Q3 \| Evaluation Metrics MAE and RMSE for each forecast horizon
 
 ::: tiny
 **Target horizons:** **Short (1d)**, **Medium (5d)**, **Long (21d)** returns (log or pct).
@@ -1405,27 +1373,16 @@ except Exception:
 
 ***Q3 — LSTM for Return Forecasting***
 
-
 Model has changed! this is place holder
-
-
 :::
 ::::
 
 ## Q4 — Accuracy vs. Prediction Horizon
 
-## Q4 \| Step 1 —
-
-## Q4 \| Step 2 —
-
-## Q4 \| Step 3 —
-
-## Wrap up \|
-
 ::: smaller
 **Question:** How does error grow as horizon increases—and what does that imply?
 
-**Procedure:** - Train identical pipelines across horizons (1, 5, 21)  - Record **MAE/RMSE**, **directional hit-rate**, **IC** per horizon - Plot **error(horizon)** and **hit-rate(horizon)** curves with CIs
+**Procedure:** - Train identical pipelines across horizons (1, 5, 21) - Record **MAE/RMSE**, **directional hit-rate**, **IC** per horizon - Plot **error(horizon)** and **hit-rate(horizon)** curves with CIs
 
 **Interpretation:** - Information decays with horizon → **bias ↑**, **variance ↓/↑** (model-dependent) - Longer horizons may need **richer features** (macro/term structure) or **different models** - Practical takeaways for **portfolio holding periods** and **signal half-life**
 :::
@@ -1435,6 +1392,5 @@ Model has changed! this is place holder
 \*\*\* Assessment \*\*\* ***Q4 — Accuracy vs. Prediction Horizon***
 
 Model has changed! this is place holder
-
 :::
 ::::
