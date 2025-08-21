@@ -20,6 +20,10 @@ execute:
 jupyter: python3
 ---
 
+## Presentation Video
+
+https://arizona.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=ad7d49f8-3d19-4b96-bc74-b34000314598# 
+
 ## What is the S&P 500?
 
 ::: smaller

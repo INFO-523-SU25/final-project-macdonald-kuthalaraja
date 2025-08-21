@@ -8,3 +8,5 @@ Proposal : https://htmlpreview.github.io/?https://github.com/INFO-523-SU25/final
 #### Disclosure:
 Derived from the original data viz course by Mine Çetinkaya-Rundel @ Duke University
 
+Presentation Video:
+https://arizona.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=ad7d49f8-3d19-4b96-bc74-b34000314598# 
