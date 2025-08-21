@@ -2,7 +2,7 @@ project:
   type: website
 
 website:
-  title: Project Title
+  title: Navigating the S&P 500 with Machine Learning
   navbar:
     right:
       - icon: github
