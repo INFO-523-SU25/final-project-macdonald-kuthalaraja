@@ -899,7 +899,7 @@ Actionability: Use clusters for diversification across distinct risk buckets, pe
 
 ## Q3 — LSTM for Return Forecasting
 
-## Q3 \| Step 1 — Data Acquisition 
+## Q3 \| Step 1 — Data Acquisition
 
 Download OHLCV for `^GSPC(SPX)`, and volatility indices: `^VIX`, `^VVIX`, `^VIX9D` via `yfinance`
 
@@ -1020,9 +1020,7 @@ merged_df.to_csv("data/merged_df.csv", index=False)
 
 ```
 
-
-
-##
+## 
 
 ```{python}
 print("\nShape:", merged_df.shape)
@@ -1043,36 +1041,35 @@ is_chronological = df['date'].is_monotonic_increasing
 print("DataFrame is in chronological order:", is_chronological)
 ```
 
-
 ## Q3 \| Step 2 — Feature Engineering/Standardization
 
 ::: tiny
-
 The function `add_features` creates the following features:
 
-- **`log_ret`**  
-  Daily log return of the index. Captures day-to-day changes in price.
+-   **`log_ret`**\
+    Daily log return of the index. Captures day-to-day changes in price.
 
-- **`ema_{span}`**  
-  Exponential moving average (default 20 days). Smooths prices to show the trend.
+-   **`ema_{span}`**\
+    Exponential moving average (default 20 days). Smooths prices to show the trend.
 
-- **`ema_gap_pct`**  
-  Difference between the price and its EMA, expressed as a percent.  
-  Positive = price above trend, Negative = price below trend.
+-   **`ema_gap_pct`**\
+    Difference between the price and its EMA, expressed as a percent.\
+    Positive = price above trend, Negative = price below trend.
 
-- **`rv{window}`**  
-  Realized volatility over a rolling window (default 20 days).  
-  Measures how much returns fluctuate.
+-   **`rv{window}`**\
+    Realized volatility over a rolling window (default 20 days).\
+    Measures how much returns fluctuate.
 
-- **Volatility index features** (if data is available):  
-  - `{col}_pct`: Daily percent change in VIX, VIX9D, or VVIX.  
-  - `{col}_z`: How unusual the volatility level is compared to the past year.
+-   **Volatility index features** (if data is available):
 
-- **`vol_proxy`**  
-  A single “volatility measure” used in modeling.  
-  - Can be the 20-day realized volatility (`rv20`)  
-  - Or the VVIX index (if chosen).
+    -   `{col}_pct`: Daily percent change in VIX, VIX9D, or VVIX.\
+    -   `{col}_z`: How unusual the volatility level is compared to the past year.
 
+-   **`vol_proxy`**\
+    A single “volatility measure” used in modeling.
+
+    -   Can be the 20-day realized volatility (`rv20`)\
+    -   Or the VVIX index (if chosen).
 :::
 
 ## Q3 \| Step 3 — Model Architecture LSTM
@@ -1376,10 +1373,7 @@ except Exception:
 
 ```
 
-
 ## Q3 \| Step 4 — Evaluation Metrics MAE and RMSE for each forecast horizon
-
-
 
 ::: tiny
 **Target horizons:** **Short (1d)**, **Medium (5d)**, **Long (21d)** returns (log or pct).
@@ -1401,27 +1395,16 @@ except Exception:
 
 ***Q3 — LSTM for Return Forecasting***
 
-
-Model has changed! this is place holder
-
-
+Model has changed
 :::
 ::::
 
 ## Q4 — Accuracy vs. Prediction Horizon
 
-## Q4 \| Step 1 —
-
-## Q4 \| Step 2 —
-
-## Q4 \| Step 3 —
-
-## Wrap up \|
-
 ::: smaller
 **Question:** How does error grow as horizon increases—and what does that imply?
 
-**Procedure:** - Train identical pipelines across horizons (1, 5, 21)  - Record **MAE/RMSE**, **directional hit-rate**, **IC** per horizon - Plot **error(horizon)** and **hit-rate(horizon)** curves with CIs
+**Procedure:** - Train identical pipelines across horizons (1, 5, 21) - Record **MAE/RMSE**, **directional hit-rate**, **IC** per horizon - Plot **error(horizon)** and **hit-rate(horizon)** curves with CIs
 
 **Interpretation:** - Information decays with horizon → **bias ↑**, **variance ↓/↑** (model-dependent) - Longer horizons may need **richer features** (macro/term structure) or **different models** - Practical takeaways for **portfolio holding periods** and **signal half-life**
 :::
@@ -1431,6 +1414,5 @@ Model has changed! this is place holder
 \*\*\* Assessment \*\*\* ***Q4 — Accuracy vs. Prediction Horizon***
 
 Model has changed! this is place holder
-
 :::
 ::::
