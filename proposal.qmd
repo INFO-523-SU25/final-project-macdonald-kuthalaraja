@@ -67,10 +67,6 @@ Q1. How well can we classify each trading day in 2024 into low, medium, or high 
 
 Q2. How can hierarchical clustering organize S&P 500 stocks into a taxonomy based on multi-factor risk or return exposures between 2014-2024?
 
-Q3. Can a Long Short-Term Memory (LSTM) model accurately forecast short, medium, or long term S&P 500 returns?
-
-Q4. How does forecast accuracy degrade as a function of prediction horizon, and what does this suggest about LSTM’s ability to model longer term financial trends?
-
 ## Analysis plan (Q1)
 
 This uses Supervised Machine Learning Methods for exploring
@@ -81,7 +77,7 @@ This uses Supervised Machine Learning Methods for exploring
 4.  Evaluation: Evaluate classification results with accuracy, confusion matrix, and analyze which features most influence volatility regime assignment.
 
 | Step | Description |
-|------------------|-----------------------------------------------------|
+|-------------------|-----------------------------------------------------|
 | Prepare Features | Gather recent price action (returns, volatility) and market indicators for each trading day. |
 | Create Volatility Classes | Divide days into low, medium, and high volatility using quantiles or thresholds. |
 | Train Classifier | Fit a supervised learning model to predict volatility class from the features. |
@@ -109,7 +105,7 @@ This uses Unsupervised Machine Learning Methods for exploring
 4.  Visualize the dendrogram and analyze the resulting clusters to interpret the taxonomy and identify meaningful stock groupings.
 
 | Step | Description |
-|------------------|------------------------------------------------------|
+|-------------------|-----------------------------------------------------|
 | Data Prep | Collect and preprocess S&P 500 stock data for 2024, computing multi-factor exposures. |
 | Matrix Build | Create a matrix with stocks as rows and factor exposures as columns. |
 | Clustering | Perform hierarchical clustering (e.g., Ward’s method) on the feature matrix. |
@@ -118,7 +114,7 @@ This uses Unsupervised Machine Learning Methods for exploring
 Potential Variables for Use
 
 | Variable | Description |
-|----------------------|--------------------------------------------------|
+|-----------------------|-------------------------------------------------|
 | avg_return_2024 | Average daily return in 2024 |
 | volatility_2024 | Standard deviation of daily returns in 2024 |
 | momentum_3m | 3-month price momentum (percent change) |
@@ -129,59 +125,3 @@ Potential Variables for Use
 | sector | Categorical variable for sector (for interpretation/grouping) |
 | skewness_2024 | Skewness of daily returns in 2024 |
 | kurtosis_2024 | Kurtosis of daily returns in 2024 |
-
-## Analysis plan (Q3, Q4)
-
--   The analysis will begin with acquisition of data from yahoo finance. We will have 4 tickers and merge into one data frame with preferred variables, features, etc.
-
--   The variables will receive a basic visual inspection and dimensional analysis
-
--   The data will be cleaned and standardized to produce a "tidy" set to be split for training LSTM model.
-
--   The model will be tested on unseen data set and results recorded.
-
--   The performance will evaluated for each time horizon and compared using plot visuals.
-
-| Ticker   | Description                           |
-|----------|---------------------------------------|
-| `^GSPC`  | S&P 500 Index (price and volume data) |
-| `^VIX`   | 30-day implied volatility             |
-| `^VVIX`  | Volatility of volatility              |
-| `^VIX9D` | 9-day implied volatility              |
-
-| Variable | Description                               |
-|----------|-------------------------------------------|
-| `Open`   | Opening price of SPX                      |
-| `High`   | Daily high price of SPX                   |
-| `Low`    | Daily low price of SPX                    |
-| `Close`  | Daily closing price of SPX                |
-| `Volume` | Daily trading volume of SPX               |
-| `VIX`    | Implied volatility index (30-day horizon) |
-| `VVIX`   | Volatility-of-volatility index            |
-| `VIX9D`  | 9-day implied volatility index            |
-
-| Features | Description |
-|------------------------------------|------------------------------------|
-| `log_return_t` | Log returns of SPX: `log(Close_t / Close_{t-1})` |
-| `ParkinsonVol` | Realized volatility from high/low: `ln(High/Low)^2 / (4ln2)` |
-| `EMA_10`, `SMA_21` | Short-term and medium-term trend indicators |
-| `lag_volatility` | Lagged daily volatility measures (RV, VIX, VVIX) |
-
-| Target Variable | Definition                                       |
-|-----------------|--------------------------------------------------|
-| `Return_t+1`    | 1-day ahead return: `pct_change(1).shift(-1)`    |
-| `Return_t+5`    | 5-day ahead return: `pct_change(5).shift(-5)`    |
-| `Return_t+21`   | 21-day ahead return: `pct_change(21).shift(-21)` |
-
-| Step | Description |
-|------------------------------------|------------------------------------|
-| **Data Acquisition** | Download OHLCV for `^GSPC(SPX)`, and volatility indices: `^VIX`, `^VVIX`, `^VIX9D` via `yfinance` |
-| **Data Cleaning/ Inspection** | Align, index, remove nulls, filter data for consistency |
-| **Feature Engineering/Standardization** | Construct technical indicators, lag features, and volatility-based predictors |
-| **Train/Test Split** | 80/20 time based split |
-| **Model Architecture** | LSTM |
-| **Evaluation Metrics** | MAE and RMSE for each forecast horizon |
-
-We selected Long Short-Term Memory (LSTM) networks because they are specifically designed to capture long-term dependencies in sequential data, making them ideal for time series forecasting like stock prices. Unlike simpler models such as linear regression or basic moving averages, LSTMs can learn patterns across varying time lags and handle noisy, non-linear trends that are common in financial markets. This allows for potentially more accurate forecasts of market movements compared to models that assume fixed, short-term dependencies.
-
-##
